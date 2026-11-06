@@ -2,7 +2,7 @@
 
 Dashboard 3D theo dõi một đội AI agent hỗ trợ công việc Business Analyst. Mỗi phòng là một agent (dự kiến chạy bằng workflow n8n). Mỗi yêu cầu đi lần lượt qua từng agent và **dừng ở cổng duyệt sau mỗi bước** cho đến khi bạn xác nhận.
 
-> **Trạng thái:** bản thử. Agent trả kết quả mẫu, dữ liệu lưu trong `localStorage` của trình duyệt. Chưa nối n8n.
+> **Trạng thái:** bản thử. Văn phòng bắt đầu trống, chưa có hồ sơ nào. Agent trả kết quả mẫu, hồ sơ lưu trong `localStorage` của trình duyệt. Chưa nối n8n.
 
 ## Mở văn phòng
 

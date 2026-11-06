@@ -209,7 +209,7 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
       <fieldset class="full" id="stepsWrap"><legend>Bước cần chạy sau Quân <span class="note">· bỏ tick bước không cần, Quân xác nhận lại ở cổng 1</span></legend><div class="cks" id="reqSteps"></div></fieldset>
       <div class="full row end"><span class="note" id="reqMsg" aria-live="polite"></span><button class="btn primary" type="submit">Gửi vào flow</button></div>
     </form>
-    <div class="ibfoot"><span class="note">Bản thử: đầu vào lưu trong trình duyệt này, agent trả kết quả mẫu. Khi nối n8n, nút Gửi sẽ chạy workflow BA-01 thật.</span><button class="btn ghost" id="resetData" type="button">Xoá dữ liệu thử</button></div>
+    <div class="ibfoot"><span class="note">Bản thử: hồ sơ lưu trong trình duyệt này, agent trả kết quả mẫu. Khi nối n8n, nút Gửi sẽ chạy workflow BA-01 thật.</span><button class="btn ghost" id="resetData" type="button">Xoá toàn bộ hồ sơ</button></div>
   </section>
 
   <section class="stage">
@@ -305,22 +305,10 @@ function add(doss,agent,status,at,extra={}){
   }
   tasks.push(t);return t;
 }
-function seed(){
-  dossiers=[
-    mkDoss({id:"REQ-001",title:"Chuyển tiền 24/7",source:"Ví dụ",input:"Ví dụ: ghi chú họp về chuyển tiền nhanh ngoài giờ hành chính."}),
-    mkDoss({id:"REQ-002",title:"Mở thẻ tín dụng trên app",source:"Ví dụ",input:"Ví dụ: khách hàng muốn đăng ký thẻ tín dụng ngay trên app."}),
-    mkDoss({id:"REQ-003",title:"Thông báo biến động số dư",source:"Ví dụ",input:"Ví dụ: đổi nội dung thông báo biến động số dư.",route:FLOW_NEW.filter(s=>s!=="data")}),
-    mkDoss({id:"REQ-004",title:"Onboarding eKYC",source:"Ví dụ",input:"Ví dụ: ghi chú họp về luồng mở tài khoản bằng eKYC."}),
-    mkDoss({id:"CR-001",title:"Đổi hạn mức giao dịch",type:"cr",parent:"REQ-001",route:["orch","impact"],source:"Ví dụ",input:"Ví dụ: thay đổi hạn mức cho chuyển tiền 24/7."})
-  ];
-  tasks=[];nextId=1;nextReq=5;nextCr=2;nextTask=1;
-  FLOW_NEW.forEach((s,i)=>add("REQ-001",s,"success",T(8,0)+i*22*60000));
-  ["orch","elic","brd"].forEach((s,i)=>add("REQ-002",s,"success",T(9,10)+i*25*60000)); add("REQ-002","bpmn","waiting",T(10,40));
-  ["orch","elic","brd","bpmn"].forEach((s,i)=>add("REQ-003",s,"success",T(11,0)+i*20*60000)); add("REQ-003","story","running",Date.now()-60000);
-  add("REQ-004","orch","success",T(13,5)); add("REQ-004","elic","returned",T(13,30),{note:"Bạn yêu cầu sửa: thiếu yêu cầu về giấy tờ tuỳ thân"}); add("REQ-004","elic","waiting",T(13,52),{rev:2});
-  add("CR-001","orch","success",T(14,0)); add("CR-001","impact","error",T(14,12),{note:"Node gọi LLM hết thời gian chờ"});
+function seed(){ // empty office: no requirements yet
+  dossiers=[];tasks=[];nextId=1;nextReq=1;nextCr=1;nextTask=1;
 }
-const KEY="ba-office-v5";
+const KEY="ba-office-v6"; // new key: start empty instead of loading earlier sample data
 function save(){try{localStorage.setItem(KEY,JSON.stringify({dossiers,tasks,nextId,nextReq,nextCr,nextTask}));}catch(e){}}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.dossiers)&&Array.isArray(s.tasks)){({dossiers,tasks,nextId,nextReq,nextCr,nextTask}=s);return true;}}catch(e){}return false;}
 
@@ -815,8 +803,8 @@ $("dAssign").addEventListener("submit",e=>{
 let resetArm=null;
 $("resetData").addEventListener("click",e=>{
   const b=e.currentTarget;
-  if(!resetArm){b.textContent="Bấm lần nữa để xoá";resetArm=setTimeout(()=>{resetArm=null;b.textContent="Xoá dữ liệu thử";},3000);return;}
-  clearTimeout(resetArm);resetArm=null;b.textContent="Xoá dữ liệu thử";
+  if(!resetArm){b.textContent="Bấm lần nữa để xoá";resetArm=setTimeout(()=>{resetArm=null;b.textContent="Xoá toàn bộ hồ sơ";},3000);return;}
+  clearTimeout(resetArm);resetArm=null;b.textContent="Xoá toàn bộ hồ sơ";
   try{localStorage.removeItem(KEY);}catch(err){}
   seed();filter="all";selected="orch";render();
 });
