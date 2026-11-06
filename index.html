@@ -125,6 +125,7 @@ code{font-family:var(--f-mono);font-size:12px;color:var(--lamp)}
 .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none}
 .revise{border:1px solid var(--line);background:var(--panel-2);color:var(--fg);font-weight:600;font-size:11.5px;padding:2px 10px;border-radius:999px}
 .s-returned{background:color-mix(in srgb,var(--lamp) 18%,transparent);color:var(--lamp)}
+.s-backlog{background:color-mix(in srgb,var(--fg) 10%,transparent);color:var(--fg)}
 .s-retried{background:color-mix(in srgb,var(--idle) 22%,transparent);color:#c3c7e6}
 li.col{flex-direction:column;align-items:stretch}
 li.col .acts{justify-content:flex-start}
@@ -230,8 +231,28 @@ table.rqt{min-width:820px;font-size:13px}
 .hist li{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .hist time{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
 .dacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.startbox{border:1px dashed color-mix(in srgb,var(--lamp) 55%,transparent);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:color-mix(in srgb,var(--lamp) 5%,transparent)}
 .btn.danger{border-color:color-mix(in srgb,var(--err) 50%,transparent);color:var(--err)}
 .editf{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;align-items:end}
+.rq .inbox{background:var(--bg)}
+.rqlegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0}
+.rqlegend>span{display:inline-flex;align-items:center;gap:6px}
+.rqlegend .ac-i{width:20px;height:20px;font-size:11px}
+table.rqt{min-width:1220px}
+.rqt th.ag{text-align:center;padding:8px 4px;white-space:nowrap}
+.rqt th.ag small{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:0;text-transform:none;color:var(--muted)}
+.agn{text-transform:none;letter-spacing:0;font-size:12px;color:var(--fg);border-bottom:2px solid var(--c);padding-bottom:1px}
+.rqt td.ac{text-align:center;padding:6px 4px}
+.ac-i{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:800;border:2px solid var(--line);color:var(--muted);line-height:1}
+.ac-i.done{background:var(--ok);border-color:var(--ok);color:#0e2a1e}
+.ac-i.run{border-color:var(--run);color:var(--run);box-shadow:0 0 0 3px color-mix(in srgb,var(--run) 30%,transparent)}
+.ac-i.wait{background:var(--wait);border-color:var(--wait);color:#1a1033;box-shadow:0 0 0 3px color-mix(in srgb,var(--wait) 35%,transparent)}
+.ac-i.err{background:var(--err);border-color:var(--err);color:#2a0a10}
+.ac-i.ret{border-color:var(--lamp);color:var(--lamp)}
+.ac-i.skip{border-style:dashed;opacity:.4}
+.ac-i.todo{opacity:.7}
+.rqt th:first-child,.rqt td.id:first-child{position:sticky;left:0;z-index:1;background:var(--panel)}
+.rqt th:first-child{background:var(--panel-2);z-index:2}
 </style>
 </head>
 <body>
@@ -246,28 +267,14 @@ table.rqt{min-width:820px;font-size:13px}
 
   <nav class="views" role="tablist" aria-label="Chế độ xem">
     <button type="button" role="tab" id="vt-office" data-view="office" aria-selected="true">Văn phòng</button>
-    <button type="button" role="tab" id="vt-reqs" data-view="requirements" aria-selected="false">Requirements <span class="cnt" id="vtCount"></span></button>
+    <button type="button" role="tab" id="vt-reqs" data-view="backlog" aria-selected="false">Product Backlog <span class="cnt" id="vtCount"></span></button>
   </nav>
 
   <section id="view-reqs" class="rq" hidden aria-labelledby="rqTitle">
     <div class="rqhead">
-      <div><h2 id="rqTitle">Requirements & Change Requests</h2><p class="note">Mỗi Change Request nằm ngay dưới Requirement gốc. Chạm vào một dòng để xem chi tiết, lịch sử và thao tác.</p></div>
-      <button class="btn primary" type="button" data-goto-form="new">＋ Requirement mới</button>
+      <div><h2 id="rqTitle">Product Backlog</h2><p class="note">Gửi việc mới và theo dõi mọi Requirement, Change Request. Mỗi CR nằm ngay dưới Requirement gốc; mỗi cột agent cho biết hồ sơ đã qua, đang ở hay chưa tới bước đó.</p></div>
+      <button class="btn" type="button" id="inboxToggle" aria-controls="inbox" aria-expanded="true">Thu gọn Gửi việc</button>
     </div>
-    <div class="rqstats" id="rqStats"></div>
-    <div class="rqfilters">
-      <label class="fld grow2">Tìm<input id="rqSearch" type="search" autocomplete="off" placeholder="Mã, tiêu đề hoặc nguồn"></label>
-      <label class="fld">Loại<select id="rqType"><option value="all">Tất cả</option><option value="new">Requirement</option><option value="cr">Change Request</option></select></label>
-      <label class="fld">Trạng thái<select id="rqStatus"><option value="all">Tất cả</option><option value="open">Đang mở</option><option value="waiting">Awaiting Approval</option><option value="running">Running</option><option value="error">Error</option><option value="done">Closed</option></select></label>
-    </div>
-    <div class="tblwrap"><table class="rqt">
-      <thead><tr><th>Mã</th><th>Tiêu đề</th><th>Loại</th><th>Trạng thái</th><th>Bước hiện tại</th><th>Tiến độ</th><th>CR</th><th>Tạo lúc</th></tr></thead>
-      <tbody id="rqBody"></tbody>
-    </table></div>
-  </section>
-
-  <div id="view-office">
-
   <section class="inbox" id="inbox" aria-labelledby="inboxTitle">
     <div class="ibhead">
       <h2 id="inboxTitle">Gửi việc</h2>
@@ -287,6 +294,21 @@ table.rqt{min-width:820px;font-size:13px}
     </form>
     <div class="ibfoot"><span class="note">Bản thử: hồ sơ lưu trong trình duyệt này, agent trả kết quả mẫu. Khi nối n8n, nút Gửi sẽ chạy workflow BA-01 thật.</span><button class="btn ghost" id="resetData" type="button">Xoá toàn bộ hồ sơ</button></div>
   </section>
+    <div class="rqstats" id="rqStats"></div>
+    <div class="rqfilters">
+      <label class="fld grow2">Tìm<input id="rqSearch" type="search" autocomplete="off" placeholder="Mã, tiêu đề hoặc nguồn"></label>
+      <label class="fld">Loại<select id="rqType"><option value="all">Tất cả</option><option value="new">Requirement</option><option value="cr">Change Request</option></select></label>
+      <label class="fld">Trạng thái<select id="rqStatus"><option value="all">Tất cả</option><option value="open">Đang mở</option><option value="backlog">Backlog (chưa giao)</option><option value="waiting">Awaiting Approval</option><option value="running">Running</option><option value="error">Error</option><option value="done">Closed</option></select></label>
+    </div>
+    <p class="note rqlegend" id="rqLegend"></p>
+    <div class="tblwrap"><table class="rqt">
+      <thead><tr id="rqHead"></tr></thead>
+      <tbody id="rqBody"></tbody>
+    </table></div>
+  </section>
+
+  <div id="view-office">
+
 
   <section class="stage">
     <div class="office">
@@ -390,8 +412,8 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify({dossiers,tasks,next
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.dossiers)&&Array.isArray(s.tasks)){({dossiers,tasks,nextId,nextReq,nextCr,nextTask}=s);dossiers.forEach(d=>{if(d.type==="cr"&&d.crExtended===undefined)d.crExtended=d.route.length>2;});return true;}}catch(e){}return false;}
 
 let filter="all", selected="orch", simTimer=null;
-const STATUS_VI={idle:"Idle",running:"Running",waiting:"Awaiting Approval",success:"Approved",error:"Error",returned:"Returned",retried:"Retried",done:"Closed"};
-const SC={idle:"var(--idle)",running:"var(--run)",waiting:"var(--wait)",success:"var(--ok)",error:"var(--err)",returned:"var(--lamp)",done:"var(--ok)"};
+const STATUS_VI={idle:"Idle",running:"Running",waiting:"Awaiting Approval",success:"Approved",error:"Error",returned:"Returned",retried:"Retried",done:"Closed",backlog:"Backlog"};
+const SC={idle:"var(--idle)",running:"var(--run)",waiting:"var(--wait)",success:"var(--ok)",error:"var(--err)",returned:"var(--lamp)",done:"var(--ok)",backlog:"var(--idle)"};
 const HEX={idle:0x6c729e,running:0x4cc4ff,waiting:0xb98cff,success:0x43d39a,error:0xff6b7c};
 const reduceMotion=matchMedia("(prefers-reduced-motion: reduce)").matches;
 const NEW_TITLES=["Đăng nhập sinh trắc học","Khoá thẻ trên app","Nhắc thanh toán thẻ","Lịch sử giao dịch","Tra soát giao dịch","Tiết kiệm online","Đổi PIN thẻ"];
@@ -401,7 +423,7 @@ const dossById=id=>dossiers.find(d=>d.id===id);
 const dTasks=d=>tasks.filter(t=>t.doss===d.id).sort((a,b)=>a.at-b.at||a.id-b.id);
 function dState(d){
   const ts=dTasks(d), last=ts[ts.length-1];
-  if(!last)return"running";
+  if(!last)return"backlog"; // created without an agent: waits in the Product Backlog
   if(last.status==="success"&&last.agent===d.route[d.route.length-1]&&!(d.type==="cr"&&!d.crExtended))return"done";
   if(last.status==="success")return"running";
   return last.status;
@@ -670,10 +692,10 @@ function tracker(d){
 const TYPE_VI={new:"Requirement",cr:"Change Request",adhoc:"Giao thẳng"};
 function dossRow(d){
   const ts=dTasks(d), last=ts[ts.length-1], st=dState(d);
-  const where=st==="done"?"Đã vào Lưu trữ":`${byId[last.agent].name} · ${byId[last.agent].task}`;
+  const where=st==="done"?"Đã vào Lưu trữ":st==="backlog"?"Chưa giao agent":`${byId[last.agent].name} · ${byId[last.agent].task}`;
   const sk=skipped(d);
   const notes=d.notes.length?`<ul class="notes">${d.notes.map(n=>`<li><b>${esc(byId[n.agent].name)}:</b> ${esc(n.text)} <span class="pill ${n.note?"s-idle":n.applied?"s-success":"s-waiting"}">${n.note?esc(n.note):n.applied?"Đã áp dụng":"Chờ tới bước"}</span></li>`).join("")}</ul>`:"";
-  return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""}${d.type==="new"&&d.route[0]!=="orch"?` · bắt đầu từ ${esc(byId[d.route[0]].name)}`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">${STATUS_VI.done}</span>`:actions(last,false)}</div>`+
+  return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""}${d.type==="new"&&d.route[0]!=="orch"?` · bắt đầu từ ${esc(byId[d.route[0]].name)}`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">${STATUS_VI.done}</span>`:st==="backlog"?`<button class="revise" type="button" data-view="backlog">Giao ở Backlog</button>`:actions(last,false)}</div>`+
   `<details class="dmore"><summary>Đầu vào${d.notes.length?" & chỉ thị":""}</summary>${d.source?`<p class="t2" style="white-space:normal">Nguồn: ${esc(d.source)}</p>`:""}${d.files&&d.files.length?`<p class="t2" style="white-space:normal">Tệp: ${d.files.map(f=>`${esc(f.name)} (${esc(f.kind)}${f.sheets?`, ${f.sheets} sheet`:""}${f.cut?", đã cắt bớt":""})`).join(" · ")}</p>`:""}<pre class="input">${esc(d.input||"(trống)")}</pre>${notes}<button class="revise" type="button" data-assign-doss="${esc(d.id)}">＋ Giao việc trong hồ sơ này</button></details></div>`;
 }
 function render(){
@@ -692,7 +714,7 @@ function render(){
 
   const open=new Set([...document.querySelectorAll(".dmore[open]")].map(x=>x.closest(".drow").querySelector("[data-assign-doss]").dataset.assignDoss));
   document.getElementById("dossCount").textContent=`${dossiers.length} hồ sơ`;
-  document.getElementById("doss").innerHTML=[...dossiers].reverse().map(dossRow).join("")||`<p class="empty">Chưa có hồ sơ. Gửi yêu cầu đầu tiên ở khu Đầu vào.</p>`;
+  document.getElementById("doss").innerHTML=[...dossiers].reverse().map(dossRow).join("")||`<p class="empty">Chưa có hồ sơ. Gửi việc đầu tiên ở tab Product Backlog.</p>`;
   document.querySelectorAll("[data-assign-doss]").forEach(b=>{if(open.has(b.dataset.assignDoss))b.closest(".dmore").open=true;});
 
   const busy=AGENTS.filter(a=>agentStatus(a.id)==="running").length;
@@ -708,7 +730,7 @@ function render(){
     return`<div class="bar"><span class="t1" style="font-weight:500">${esc(a.name)}</span><span class="trk"><i style="width:${v??0}%;background:${a.color}"></i></span><b>${v===null?"–":v+"%"}</b></div>`}).join("");
 
   document.getElementById("todayCount").textContent=`${dossiers.length} hồ sơ`;
-  const segs=["done","running","waiting","error"].map(k=>[k,STATUS_VI[k]]);
+  const segs=["done","running","waiting","error","backlog"].map(k=>[k,STATUS_VI[k]]);
   const cnt=k=>live.filter(s=>s===k).length;
   let acc=0;const R=46,C=2*Math.PI*R,total=dossiers.length;
   const arcs=segs.map(([k])=>{const n=cnt(k);if(!n||!total)return"";const len=n/total*C;const s=`<circle r="${R}" cx="60" cy="60" fill="none" stroke="${SC[k]}" stroke-width="13" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 60 60)"/>`;acc+=len;return s}).join("");
@@ -783,6 +805,7 @@ function assignPlan(agent,dId){
   const route=order.filter(s=>d.route.includes(s)||s===agent);
   const added=!d.route.includes(agent);
   const ts=dTasks(d), cur=ts[ts.length-1], st=dState(d);
+  if(!cur)return{ok:true,kind:"hold",route:added?null:route,msg:`${d.id} còn nằm trong Backlog, chưa giao agent nào. Chỉ thị được giữ và áp dụng khi hồ sơ tới bước của ${a.name}.`};
   const ai=route.indexOf(agent), ci=route.indexOf(cur.agent);
   const pre=added?`Bước ${a.name} đang bị bỏ qua trong ${d.id}, giao việc sẽ thêm lại bước này. `:"";
   if(st!=="done"&&ai>ci)return{ok:true,kind:"hold",route,msg:pre+`${d.id} chưa tới bước ${a.name}. Chỉ thị được giữ lại và áp dụng khi tới bước này.`};
@@ -822,20 +845,20 @@ function tick(){
 
 /* ================= input forms ================= */
 const $=id=>document.getElementById(id);
-$("reqStart").innerHTML=[...FLOW_NEW,"impact"].map(id=>{const a=byId[id];return`<option value="${id}">${esc(a.name)} · ${esc(a.task)}${id==="orch"?" (đủ quy trình)":id==="impact"?" (Change Request)":""}</option>`;}).join("");
+$("reqStart").innerHTML=`<option value="">Chưa giao · để trong Backlog</option>`+[...FLOW_NEW,"impact"].map(id=>{const a=byId[id];return`<option value="${id}">${esc(a.name)} · ${esc(a.task)}${id==="orch"?" (đủ quy trình)":id==="impact"?" (Change Request)":""}</option>`;}).join("");
 const stepChecks={}; // remembers ticks while the form is open
 function crGuard(){
   const none=!dossiers.some(d=>d.type==="new");
   const crOpt=$("reqType").querySelector('option[value="cr"]'), kOpt=$("reqStart").querySelector('option[value="impact"]');
   crOpt.disabled=none;crOpt.textContent=none?"Change Request (cần có Requirement trước)":"Change Request";
   kOpt.disabled=none;kOpt.textContent=`${byId.impact.name} · ${byId.impact.task} (Change Request${none?", cần có Requirement trước":""})`;
-  if(none&&($("reqType").value==="cr"||$("reqStart").value==="impact")){$("reqType").value="new";if($("reqStart").value==="impact")$("reqStart").value="orch";updForm();}
+  if(none&&($("reqType").value==="cr"||$("reqStart").value==="impact")){$("reqType").value="new";if($("reqStart").value==="impact")$("reqStart").value="";updForm();}
 }
 function updForm(){
   const st=$("reqStart").value, type=$("reqType").value, scope=$("scopeCont").checked?"continue":"only";
-  $("typeWrap").hidden=st!=="orch";
-  $("scopeWrap").hidden=st==="orch"||st==="impact";
-  $("parentWrap").hidden=!((st==="orch"&&type==="cr")||st==="impact");
+  $("typeWrap").hidden=!(st===""||st==="orch");
+  $("scopeWrap").hidden=st===""||st==="orch"||st==="impact";
+  $("parentWrap").hidden=!(((st===""||st==="orch")&&type==="cr")||st==="impact");
   const after=FLOW_NEW.includes(st)?FLOW_NEW.slice(FLOW_NEW.indexOf(st)+1):[];
   const show=after.length&&((st==="orch"&&type==="new")||(st!=="orch"&&scope==="continue"));
   $("stepsWrap").hidden=!show;
@@ -845,7 +868,7 @@ function updForm(){
   }
   $("scopeCont").disabled=st==="review";
   if(st==="review")$("scopeOnly").checked=true;
-  $("reqSubmit").textContent=`Gửi cho ${byId[st].name}`;
+  $("reqSubmit").textContent=st?`Gửi cho ${byId[st].name}`:"Thêm vào Backlog";
 }
 $("reqSteps").addEventListener("change",e=>{if(e.target.type==="checkbox")stepChecks[e.target.value]=e.target.checked;});
 ["reqStart","reqType","scopeOnly","scopeCont"].forEach(id=>$(id).addEventListener("change",updForm));
@@ -854,7 +877,7 @@ function fillSelects(){
   const keep=(el,html)=>{const v=el.value;el.innerHTML=html;if([...el.options].some(o=>o.value===v))el.value=v;};
   const reqs=dossiers.filter(d=>d.type==="new");
   keep($("reqParent"),reqs.length
-    ?`<option value="">— Chọn Requirement —</option>`+[...reqs].reverse().map(d=>{const st=dState(d),ts=dTasks(d),l=ts[ts.length-1];return`<option value="${d.id}">${d.id} · ${esc(d.title)} · ${st==="done"?"đã chốt":"đang ở "+esc(byId[l.agent].name)}</option>`;}).join("")
+    ?`<option value="">— Chọn Requirement —</option>`+[...reqs].reverse().map(d=>{const st=dState(d),ts=dTasks(d),l=ts[ts.length-1];return`<option value="${d.id}">${d.id} · ${esc(d.title)} · ${st==="done"?"đã chốt":st==="backlog"?"chưa giao":"đang ở "+esc(byId[l.agent].name)}</option>`;}).join("")
     :`<option value="">Chưa có Requirement nào</option>`);
   crGuard();
   keep($("tDoss"),`<option value="adhoc">Việc lẻ mới (không thuộc hồ sơ)</option>`+[...dossiers].reverse().map(d=>`<option value="${d.id}">${d.id} · ${esc(d.title)}${dState(d)==="done"?" (đã chốt)":""}</option>`).join(""));
@@ -978,20 +1001,28 @@ $("f-req").addEventListener("submit",e=>{
   e.preventDefault();
   const title=$("reqTitle").value.trim(), body=$("reqBody").value.trim();
   if(!title||!body){$("reqMsg").textContent="Cần có tiêu đề và nội dung.";return;}
-  if((($("reqStart").value==="orch"&&$("reqType").value==="cr")||$("reqStart").value==="impact")&&!$("reqParent").value){
+  if(((["","orch"].includes($("reqStart").value)&&$("reqType").value==="cr")||$("reqStart").value==="impact")&&!$("reqParent").value){
     $("reqMsg").textContent="Change Request phải gắn với một Requirement. Chọn Requirement gốc.";$("reqParent").focus();return;}
   const st=$("reqStart").value, type=$("reqType").value, scope=$("scopeCont").checked?"continue":"only";
   const base={title,input:body,source:$("reqSource").value.trim(),files:attachments.slice()};
   const ticked=s=>!$("stepsWrap").hidden&&$("step-"+s)&&$("step-"+s).checked;
   const after=FLOW_NEW.includes(st)?FLOW_NEW.slice(FLOW_NEW.indexOf(st)+1):[];
   let d,how;
+  if(st===""){ // no agent yet: the item waits in the backlog
+    d=type==="cr"?mkDoss({...base,id:`CR-${pad(nextCr++)}`,type:"cr",route:["orch","impact"],crExtended:false,parent:$("reqParent").value})
+                 :mkDoss({...base,id:`REQ-${pad(nextReq++)}`});
+    dossiers.push(d);
+    $("f-req").reset();attachments=[];showFiles("");Object.keys(stepChecks).forEach(k=>delete stepChecks[k]);updForm();
+    $("reqMsg").textContent=`Đã thêm ${d.id} vào Backlog. Khi sẵn sàng, mở dòng của nó trong bảng để giao cho agent.`;
+    rqOpen=d.id;render();return;
+  }
   if(st==="orch"&&type==="cr"){d=startDossier("cr",{...base,route:["orch","impact"],parent:$("reqParent").value||undefined});how="Hồ sơ dừng chờ bạn duyệt sau mỗi bước.";}
   else if(st==="impact"){d=startDossier("cr",{...base,route:["impact"],parent:$("reqParent").value||undefined});how="Khoa phân tích xong sẽ chờ bạn duyệt, rồi flow quay lại bước bị ảnh hưởng.";}
-  else if(st!=="orch"&&scope==="only"){d=startDossier("adhoc",{...base,route:[st]});how=`Chỉ ${byId[st].name} xử lý, xong dừng chờ bạn duyệt rồi vào Lưu trữ.`;}
+  else if(st!=="orch"&&scope==="only"){d=startDossier("new",{...base,route:[st]});how=`Chỉ ${byId[st].name} xử lý, xong dừng chờ bạn duyệt rồi vào Lưu trữ.`;}
   else{d=startDossier("new",{...base,route:[st,...after.filter(ticked)]});how="Hồ sơ dừng chờ bạn duyệt sau mỗi bước.";}
   $("f-req").reset();attachments=[];showFiles("");Object.keys(stepChecks).forEach(k=>delete stepChecks[k]);updForm();
   $("reqMsg").textContent=`Đã gửi ${d.id} cho ${byId[d.route[0]].name}. ${how}`;
-  selected=d.route[0];render();
+  selected=d.route[0];rqOpen=d.id;render();
 });
 $("dAssign").addEventListener("submit",e=>{
   e.preventDefault();
@@ -1041,10 +1072,21 @@ document.getElementById("spinBtn").addEventListener("click",e=>{
   const on=e.currentTarget.getAttribute("aria-pressed")!=="true";
   e.currentTarget.setAttribute("aria-pressed",on);G.spin&&G.spin(on);
 });
-/* ================= Requirements tab ================= */
+/* ================= Product Backlog tab ================= */
 let view="office", rqOpen=null, rqEdit=null, rqDel=null;
 const fmtDT=ms=>new Date(ms).toLocaleString("vi-VN",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
 const crsOf=id=>dossiers.filter(d=>d.type==="cr"&&d.parent===id);
+const AG_COLS=[...FLOW_NEW,"impact"], NCOL=8+AG_COLS.length;
+const CELL={success:["✓","done"],running:["▶","run"],waiting:["⏸","wait"],error:["!","err"],returned:["↺","ret"],retried:["↺","ret"],skip:["–","skip"],todo:["·","todo"]};
+$("rqHead").innerHTML=`<th>Mã</th><th>Tiêu đề</th><th>Loại</th><th>Trạng thái</th><th>Đang ở</th>`+
+  AG_COLS.map(id=>{const a=byId[id];return`<th class="ag" title="${esc(a.task)}"><span class="agn" style="--c:${a.color}">${esc(a.name)}</span><small>${a.step?`B${a.step}`:"CR"}</small></th>`;}).join("")+`<th>Tiến độ</th><th>CR</th><th>Tạo lúc</th>`;
+$("rqLegend").innerHTML=[["success","Approved"],["running","Running"],["waiting","Awaiting Approval"],["error","Error"],["returned","Returned / làm lại"],["todo","Chưa tới"],["skip","Bỏ qua / không áp dụng"]]
+  .map(([k,l])=>`<span><span class="ac-i ${CELL[k][1]}">${CELL[k][0]}</span>${l}</span>`).join("");
+function agentCell(d,s){
+  const st=stepState(d,s), [ch,cls]=CELL[st]||CELL.todo, a=byId[s];
+  const label=st==="skip"?(d.type==="cr"&&!d.crExtended&&FLOW_NEW.includes(s)&&s!=="orch"?"Chờ Khoa xác định":"Bỏ qua / không áp dụng"):st==="todo"?"Chưa tới":STATUS_VI[st];
+  return`<td class="ac"><span class="ac-i ${cls}" title="${esc(a.name)} · ${esc(a.task)}: ${esc(label)}">${ch}</span></td>`;
+}
 function progress(d){const steps=routeSteps(d).filter(s=>stepState(d,s)!=="skip");const ok=steps.filter(s=>stepState(d,s)==="success").length;return[ok,steps.length];}
 function rqMatch(d){
   const q=$("rqSearch").value.trim().toLowerCase(), ty=$("rqType").value, st=$("rqStatus").value, ds=dState(d);
@@ -1056,21 +1098,36 @@ function rqMatch(d){
 }
 function rqRow(d){
   const ds=dState(d), ts=dTasks(d), l=ts[ts.length-1], [ok,n]=progress(d), crs=d.type==="new"?crsOf(d.id).length:"";
-  const cur=ds==="done"?`<span class="muted">—</span>`:`${esc(byId[l.agent].name)} <span class="muted">· ${esc(byId[l.agent].task)}</span>`;
+  const cur=ds==="done"||ds==="backlog"?`<span class="muted">${ds==="backlog"?"Chưa giao":"—"}</span>`:`${esc(byId[l.agent].name)} <span class="muted">· ${esc(byId[l.agent].task)}</span>`;
   return`<tr class="r ${d.type}${rqOpen===d.id?" open":""}" data-rq="${esc(d.id)}" tabindex="0" aria-expanded="${rqOpen===d.id}">
     <td class="id">${esc(d.id)}</td><td class="ttl">${esc(d.title)}${d.type==="cr"?`<div class="muted">đổi cho ${esc(d.parent||"?")}</div>`:""}</td>
     <td><span class="tag ${d.type}">${TYPE_VI[d.type]}</span></td>
     <td><span class="pill s-${ds==="done"?"success":ds}">${STATUS_VI[ds]}</span></td>
     <td>${cur}</td>
+    ${AG_COLS.map(s=>agentCell(d,s)).join("")}
     <td><span class="prog"><span class="trk"><i style="width:${n?ok/n*100:0}%"></i></span>${ok}/${n}</span></td>
     <td class="id">${crs}</td><td class="muted">${fmtDT(d.created||ts[0]?.at||Date.now())}</td></tr>`+(rqOpen===d.id?rqDetail(d):"");
+}
+const startSel={}; // keeps the chosen agent per row across re-renders
+function startBox(d){
+  const opts=d.type==="cr"?["orch","impact"]:FLOW_NEW, v=startSel[d.id]||{agent:opts[0],cont:true};
+  return`<div class="startbox" data-startbox="${esc(d.id)}"><h4>Giao cho agent</h4>
+    <div class="row"><label class="fld" style="flex:1 1 200px">Bắt đầu từ<select data-start-agent>${opts.map(id=>`<option value="${id}" ${v.agent===id?"selected":""}>${esc(byId[id].name)} · ${esc(byId[id].task)}</option>`).join("")}</select></label>
+    ${d.type==="cr"?"":`<label class="ck"><input type="checkbox" data-start-cont ${v.cont?"checked":""}> <span>Chạy tiếp các bước sau</span></label>`}
+    <button class="btn primary" type="button" data-start="${esc(d.id)}">Bắt đầu xử lý</button></div>
+    <p class="note" style="margin:0">Mỗi bước vẫn dừng chờ bạn duyệt.</p></div>`;
+}
+function startBacklog(d,agent,cont){
+  if(d.type==="cr")d.route=agent==="orch"?["orch","impact"]:["impact"];
+  else d.route=agent==="orch"?[...FLOW_NEW]:cont?FLOW_NEW.slice(FLOW_NEW.indexOf(agent)):[agent];
+  add(d.id,d.route[0],"running",Date.now());delete startSel[d.id];selected=d.route[0];
 }
 function rqDetail(d){
   const ts=dTasks(d), ds=dState(d), crs=d.type==="new"?crsOf(d.id):[];
   const hist=[...ts].reverse().map(t=>`<li><time>${fmtDT(t.at)}</time><b>${esc(byId[t.agent].name)}</b><span class="muted">${esc(byId[t.agent].task)}${t.rev?` · lần ${t.rev}`:""}</span><span class="pill s-${t.status}">${STATUS_VI[t.status]}</span>${t.note?`<span class="muted">${esc(t.note)}</span>`:""}</li>`).join("");
   const edit=rqEdit===d.id?`<form class="editf" data-editf="${esc(d.id)}"><label class="fld">Tiêu đề<input id="edTitle" maxlength="120" value="${esc(d.title)}"></label><label class="fld">Nguồn<input id="edSource" maxlength="160" value="${esc(d.source||"")}"></label><div class="dacts"><button class="btn primary" type="submit">Lưu</button><button class="btn" type="button" data-rq-cancel>Huỷ</button></div></form>`:"";
   const delBlock=crs.length?`<span class="muted">Không xoá được: còn ${crs.length} Change Request gắn với Requirement này.</span>`:`<button class="btn danger" type="button" data-rq-del="${esc(d.id)}">${rqDel===d.id?"Bấm lần nữa để xoá vĩnh viễn":"Xoá"}</button>`;
-  return`<tr class="detail"><td colspan="8"><div class="dgrid">
+  return`<tr class="detail"><td colspan="${NCOL}"><div class="dgrid">
     <div class="dsec">
       ${edit}
       <h4>Đầu vào</h4>
@@ -1081,6 +1138,7 @@ function rqDetail(d){
       ${crs.length?`<h4>Change Request</h4><ul class="notes">${crs.map(c=>`<li><b>${esc(c.id)}</b> ${esc(c.title)} · ${STATUS_VI[dState(c)]}</li>`).join("")}</ul>`:""}
     </div>
     <div class="dsec">
+      ${ds==="backlog"?startBox(d):""}
       <h4>Tiến trình</h4>${tracker(d)}
       <h4>Lịch sử</h4><ul class="hist">${hist||"<li class='muted'>Chưa có</li>"}</ul>
       <div class="dacts">
@@ -1095,9 +1153,9 @@ function renderReqs(){
   const list=dossiers.filter(d=>d.type==="new"||d.type==="cr");
   const reqs=list.filter(d=>d.type==="new"), crs=list.filter(d=>d.type==="cr");
   $("vtCount").textContent=list.length||"";
-  if(view!=="requirements"||rqEdit)return; // keep an open edit form intact
+  if(view!=="backlog"||rqEdit)return; // keep an open edit form intact
   const open=a=>a.filter(d=>dState(d)!=="done").length;
-  $("rqStats").innerHTML=[["Requirement",reqs.length],["Requirement đang mở",open(reqs)],["Change Request",crs.length],["CR đang mở",open(crs)],["Chờ bạn duyệt",list.filter(d=>dState(d)==="waiting").length]]
+  $("rqStats").innerHTML=[["Requirement",reqs.length],["Requirement đang mở",open(reqs)],["Change Request",crs.length],["CR đang mở",open(crs)],["Chưa giao",list.filter(d=>dState(d)==="backlog").length],["Chờ bạn duyệt",list.filter(d=>dState(d)==="waiting").length]]
     .map(([k,v])=>`<div class="rqstat">${k}<b>${v}</b></div>`).join("");
   const rows=[];
   [...reqs].reverse().forEach(r=>{
@@ -1105,16 +1163,17 @@ function renderReqs(){
     if(self||kids.length){rows.push(rqRow(r));kids.forEach(c=>rows.push(rqRow(c)));}
   });
   crs.filter(c=>!reqs.some(r=>r.id===c.parent)&&rqMatch(c)).forEach(c=>rows.push(rqRow(c))); // orphaned CRs (parent deleted earlier)
-  $("rqBody").innerHTML=rows.join("")||`<tr><td colspan="8" class="empty">${list.length?"Không có mục nào khớp bộ lọc.":"Chưa có Requirement nào. Bấm “＋ Requirement mới” để tạo."}</td></tr>`;
+  $("rqBody").innerHTML=rows.join("")||`<tr><td colspan="${NCOL}" class="empty">${list.length?"Không có mục nào khớp bộ lọc.":"Chưa có Requirement nào. Gửi việc đầu tiên ở form phía trên."}</td></tr>`;
 }
 function setView(v,push=true){
-  view=v==="requirements"?"requirements":"office";
-  $("vt-office").setAttribute("aria-selected",view==="office");$("vt-reqs").setAttribute("aria-selected",view==="requirements");
-  $("view-office").hidden=view!=="office";$("view-reqs").hidden=view!=="requirements";
+  view=v==="backlog"||v==="requirements"?"backlog":"office";
+  $("vt-office").setAttribute("aria-selected",view==="office");$("vt-reqs").setAttribute("aria-selected",view==="backlog");
+  $("view-office").hidden=view!=="office";$("view-reqs").hidden=view!=="backlog";
   if(push){try{history.replaceState(null,"","#"+view);}catch(e){location.hash=view;}}
   render();
 }
 ["rqSearch","rqType","rqStatus"].forEach(id=>$(id).addEventListener(id==="rqSearch"?"input":"change",renderReqs));
+$("rqBody").addEventListener("change",e=>{const box=e.target.closest("[data-startbox]");if(!box)return;const c=box.querySelector("[data-start-cont]");startSel[box.dataset.startbox]={agent:box.querySelector("[data-start-agent]").value,cont:c?c.checked:true};});
 $("rqBody").addEventListener("keydown",e=>{const r=e.target.closest("tr.r");if(r&&(e.key==="Enter"||e.key===" ")){e.preventDefault();r.click();}});
 $("rqBody").addEventListener("submit",e=>{
   const f=e.target.closest("[data-editf]");if(!f)return;e.preventDefault();
@@ -1122,16 +1181,21 @@ $("rqBody").addEventListener("submit",e=>{
   if(!t){$("edTitle").focus();return;}
   d.title=t;d.source=$("edSource").value.trim();rqEdit=null;render();
 });
+function showInbox(on){$("inbox").hidden=!on;$("inboxToggle").setAttribute("aria-expanded",on);$("inboxToggle").textContent=on?"Thu gọn Gửi việc":"＋ Gửi việc mới";}
+$("inboxToggle").addEventListener("click",()=>{const on=$("inbox").hidden;showInbox(on);if(on)$("reqTitle").focus();});
 document.addEventListener("click",e=>{
   const v=e.target.closest("[data-view]");if(v){setView(v.dataset.view);return;}
   const g=e.target.closest("[data-goto-form]");
   if(g){
-    setView("office");
-    $("reqStart").value="orch";$("reqType").value=g.dataset.gotoForm==="cr"?"cr":"new";updForm();fillSelects();
+    setView("backlog");showInbox(true);
+    $("reqStart").value="";$("reqType").value=g.dataset.gotoForm==="cr"?"cr":"new";updForm();fillSelects();
     if(g.dataset.parent)$("reqParent").value=g.dataset.parent;
     $("inbox").scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"start"});$("reqTitle").focus({preventScroll:true});return;
   }
   if(!e.target.closest("#rqBody"))return;
+  const sb=e.target.closest("[data-start]");
+  if(sb){const box=sb.closest("[data-startbox]"),d=dossById(sb.dataset.start),c=box.querySelector("[data-start-cont]");startBacklog(d,box.querySelector("[data-start-agent]").value,c?c.checked:false);render();return;}
+  if(e.target.closest("[data-startbox]"))return;
   const ed=e.target.closest("[data-rq-edit]");if(ed){startEdit(ed.dataset.rqEdit);return;}
   if(e.target.closest("[data-rq-cancel]")){rqEdit=null;renderReqs();return;}
   const del=e.target.closest("[data-rq-del]");

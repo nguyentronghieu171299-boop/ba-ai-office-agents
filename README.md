@@ -29,21 +29,22 @@ Tại mỗi cổng: **Duyệt** (sang bước sau) · **Yêu cầu sửa** (agen
 
 ## Cách dùng
 
-**Gửi việc** (khu đầu trang): tiêu đề, agent bắt đầu, nguồn, nội dung hoặc tài liệu cần xử lý: dán trực tiếp, hoặc tải / kéo thả file Word (`.docx`), Excel (`.xlsx`, `.xls`), `.csv`, `.txt`, `.md` (tối đa 10 MB/tệp, chọn nhiều tệp được). Nội dung file được chuyển thành văn bản, giữ heading, danh sách và bảng; mỗi sheet Excel thành một bảng.
+Trang có hai tab: **Văn phòng** (`#office`) và **Product Backlog** (`#backlog`).
+
+**Gửi việc** (đầu tab Product Backlog, thu gọn được): tiêu đề, loại (Requirement / Change Request), nguồn, nội dung hoặc tài liệu cần xử lý: dán trực tiếp, hoặc tải / kéo thả file Word (`.docx`), Excel (`.xlsx`, `.xls`), `.csv`, `.txt`, `.md` (tối đa 10 MB/tệp).
 
 | Giao cho | Phạm vi | Kết quả |
 |---|---|---|
-| Quân | Yêu cầu mới | Chạy đủ quy trình; bỏ tick được bước không cần |
-| Quân | Change request | Quân → Khoa → quay lại bước bị ảnh hưởng |
-| Khoa | Change request | Bỏ qua Quân, Khoa phân tích rồi quay lại bước bị ảnh hưởng |
-| Bất kỳ agent khác | Chỉ agent này | Agent đó xử lý một mình, chờ duyệt rồi vào Lưu trữ |
-| Bất kỳ agent khác | Chạy tiếp các bước sau | Bắt đầu từ agent đó, chạy tiếp các bước được tick |
+| Chưa giao (mặc định) | — | Nằm trong Backlog với trạng thái **Backlog**; giao agent sau ngay trên dòng của nó |
+| Quân | Requirement | Chạy đủ quy trình; bỏ tick được bước không cần |
+| Quân | Change Request | Quân → Khoa → quay lại bước bị ảnh hưởng |
+| Khoa | Change Request | Bỏ qua Quân, Khoa phân tích rồi quay lại bước bị ảnh hưởng |
+| Agent khác | Chỉ agent này | Agent đó xử lý một mình, chờ duyệt rồi đóng |
+| Agent khác | Chạy tiếp các bước sau | Bắt đầu từ agent đó, chạy tiếp các bước được tick |
 
-Mọi trường hợp đều dừng ở cổng duyệt sau mỗi bước.
+Mọi trường hợp đều dừng ở cổng duyệt sau mỗi bước. Change Request bắt buộc gắn với một Requirement đã có.
 
-Change Request bắt buộc gắn với một Requirement đã có: khi chọn Change Request (hoặc giao cho Khoa), trang liệt kê các Requirement để chọn Requirement gốc. Chưa có Requirement nào thì chưa tạo được Change Request.
-
-**Tab Requirements** (đầu trang, mở thẳng bằng `#requirements`): bảng quản lý mọi Requirement, mỗi Change Request nằm ngay dưới Requirement gốc. Lọc theo loại, trạng thái, tìm theo mã, tiêu đề, nguồn. Chạm một dòng để xem đầu vào, tệp, chỉ thị, tiến trình, lịch sử từng bước; thao tác: xem trong văn phòng, tạo Change Request, sửa tiêu đề/nguồn, xoá (Requirement còn CR thì không xoá được).
+**Bảng Product Backlog:** mỗi Change Request nằm dưới Requirement gốc. Có một cột cho mỗi agent (✓ Approved, ▶ Running, ⏸ Awaiting Approval, ! Error, ↺ Returned, · chưa tới, – bỏ qua) để thấy hồ sơ đang ở bước nào. Lọc theo loại, trạng thái (kể cả Backlog), tìm theo mã, tiêu đề, nguồn. Mở một dòng để xem đầu vào, tệp, chỉ thị, lịch sử; giao agent cho mục chưa giao; xem trong văn phòng; tạo Change Request; sửa; xoá.
 
 **Giao thêm việc cho hồ sơ đang chạy** (trong khung của từng agent):
 
