@@ -1,0 +1,61 @@
+# Văn phòng BA AI
+
+Dashboard 3D theo dõi một đội AI agent hỗ trợ công việc Business Analyst. Mỗi phòng là một agent (dự kiến chạy bằng workflow n8n). Mỗi yêu cầu đi lần lượt qua từng agent và **dừng ở cổng duyệt sau mỗi bước** cho đến khi bạn xác nhận.
+
+> **Trạng thái:** bản thử. Agent trả kết quả mẫu, dữ liệu lưu trong `localStorage` của trình duyệt. Chưa nối n8n.
+
+## Mở văn phòng
+
+- **Trên máy:** mở `index.html` bằng trình duyệt (cần internet để tải Three.js và font).
+- **Trên web:** bật GitHub Pages cho repo (Settings → Pages → Deploy from branch → `main` / root). Repo private cần gói GitHub trả phí mới dùng được Pages.
+
+## Đội agent và flow
+
+Yêu cầu mới: **Quân → Mai → Bảo → Vy → Tú → Đạt → Linh → Lưu trữ**
+Change request: **Quân → Khoa →** quay lại bước bị ảnh hưởng sớm nhất trong flow trên.
+
+| Bước | Agent | Tác vụ | Tại cổng duyệt, bạn kiểm tra |
+|---|---|---|---|
+| 1 | Quân | Tiếp nhận & phân loại | Đúng loại (mới/CR), đúng phạm vi, các bước cần chạy hợp lý |
+| 2 | Mai | Bóc tách yêu cầu | Không sót ý, mỗi yêu cầu có mã REQ, giả định và câu hỏi mở ghi riêng |
+| 3 | Bảo | Soạn BRD / FRS | Đủ mọi REQ, quy tắc có nguồn, không tự thêm quy định |
+| 4 | Vy | Vẽ luồng BPMN | Actor, điểm quyết định, luồng ngoại lệ khớp FRS |
+| 5 | Tú | Viết user story & AC | Mỗi REQ có story, AC phủ cả luồng ngoại lệ |
+| 6 | Đạt | Mapping dữ liệu | Đủ field, quy tắc chuyển đổi rõ, field thiếu được đánh dấu |
+| 7 | Linh | Rà soát tổng thể | Ma trận truy vết REQ → FRS → BPMN → story → mapping không còn ô trống |
+| CR | Khoa | Phân tích tác động | Đủ thành phần bị ảnh hưởng, chọn đúng bước quay lại |
+
+Tại mỗi cổng: **Duyệt** (sang bước sau) · **Yêu cầu sửa** (agent làm lại) · **Trả về bước trước**.
+
+## Cách dùng
+
+**Gửi yêu cầu** (khu đầu trang): tiêu đề, loại, nguồn, nội dung thô (dán hoặc nhập file `.txt`/`.md`), chọn các bước cần chạy.
+
+**Giao việc cho agent** (trong khung của từng agent):
+
+| Hồ sơ đang ở đâu | Kết quả |
+|---|---|
+| Chưa tới bước của agent | Chỉ thị được giữ, áp dụng khi tới bước đó |
+| Đang ở đúng bước đó | Agent làm lại ngay với chỉ thị, rồi chờ duyệt |
+| Đã qua bước đó / đã chốt | Mở lại bước đó; các bước sau chạy lại, mỗi bước chờ duyệt |
+| Bước đang bị bỏ qua | Thêm lại bước vào flow |
+| Việc lẻ | Agent làm riêng, chờ duyệt rồi vào Lưu trữ |
+
+## Kế hoạch nối n8n
+
+- Mỗi agent là một workflow gắn tag `ba-office`, đặt tên theo bước: `BA-01 · Tiếp nhận & phân loại` … `BA-07 · Rà soát tổng thể`, `BA-CR · Phân tích tác động`.
+- Mỗi workflow kết thúc bằng node **Wait** (cổng duyệt). Output chỉ chuyển sang workflow kế tiếp khi bạn duyệt.
+- Trạng thái execution → hiển thị:
+
+| n8n | Văn phòng |
+|---|---|
+| `running` | Đang chạy |
+| `waiting` | Chờ bạn duyệt |
+| `success` | Đã duyệt / Lưu trữ |
+| `error`, `crashed` | Lỗi |
+
+- Việc còn lại: nối connector n8n (MCP) để trang đọc execution thật và để nút Gửi / Duyệt gọi workflow thật.
+
+## Lưu ý dữ liệu
+
+Không dán thông tin khách hàng hoặc tài liệu nội bộ của tổ chức vào bản thử này, hay vào n8n/LLM bên ngoài, trừ khi chính sách nơi làm việc cho phép.

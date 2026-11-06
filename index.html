@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Văn phòng BA AI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: header KPI strip → 3D office (Three.js, orbit) beside a detail drawer → 4 status panels → n8n mapping. Single deliberate night-office look. */
+:root{
+  --bg:#0e1126; --panel:#161a35; --panel-2:#1c2142; --line:#2a3060; --fg:#eceefb; --muted:#959bc6;
+  --lamp:#ffb44a;
+  --run:#4cc4ff; --wait:#b98cff; --ok:#43d39a; --err:#ff6b7c; --idle:#6c729e;
+  --f-display:"Be Vietnam Pro",system-ui,sans-serif; --f-body:"Be Vietnam Pro",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;justify-content:space-between}
+.brand h1{font-family:var(--f-display);font-weight:800;font-size:clamp(22px,3vw,28px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--lamp) 16%,transparent);color:var(--lamp);margin-left:8px;vertical-align:middle}
+.kpis{display:flex;flex-wrap:wrap;gap:10px}
+.kpi{min-width:118px;padding:9px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column}
+.kpi span{font-size:12px;color:var(--muted)}
+.kpi b{font-family:var(--f-mono);font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi b small{font-size:12px;margin-left:6px;color:var(--ok)}
+.kpi.run b{color:var(--run)} .kpi.wait b{color:var(--wait)} .kpi.ok b{color:var(--ok)} .kpi.err b{color:var(--err)}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}
+@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}}
+.office{background:var(--bg);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1 1 260px}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px;font-size:12.5px}
+.chip[aria-pressed="true"]{background:var(--lamp);color:#20160a;border-color:var(--lamp);font-weight:600}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:6px 12px;font-size:13px;font-weight:600;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.btn[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
+.btn.primary{background:var(--lamp);border-color:var(--lamp);color:#20160a}
+.scene{position:relative;height:clamp(360px,52vw,540px);touch-action:none;cursor:grab}
+.scene:active{cursor:grabbing}
+.scene canvas{display:block;width:100%;height:100%}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;pointer-events:auto;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  font-size:12px;font-weight:600;padding:3px 10px 3px 8px;border-radius:999px;background:color-mix(in srgb,var(--panel) 88%,transparent);
+  border:1.5px solid var(--c);color:var(--fg);transform:translate(-50%,-100%);backdrop-filter:blur(4px);transition:opacity .2s}
+.lbl{border-radius:10px;padding:3px 10px 4px 8px;text-align:left}
+.lbl i{width:8px;height:8px;border-radius:50%;background:var(--s,var(--idle));flex:none}
+.lbl .lt{display:flex;flex-direction:column;line-height:1.2}
+.lbl .ln{font-size:12.5px;font-weight:700}
+.lbl small{font-size:10.5px;font-weight:500;color:var(--muted)}
+.lbl.sel{background:var(--c);color:#14172e}
+.lbl.sel small{color:#2a2d4a}
+.step{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px}
+.flow .to{border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--panel-2)}
+.lbl.dim{opacity:.3}
+.hint{position:absolute;right:max(10px,env(safe-area-inset-right,0px));bottom:10px;font-size:11.5px;color:var(--muted);pointer-events:none;background:color-mix(in srgb,var(--bg) 70%,transparent);padding:2px 8px;border-radius:6px}
+.nogl{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);padding:20px;text-align:center}
+.legend{display:flex;flex-wrap:wrap;gap:14px;padding:8px 12px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+
+.drawer{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.dinfo{display:flex;flex-direction:column;gap:12px}
+.assign{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px;scroll-margin-top:12px}
+.assign h3{margin:0;font-size:15px;font-weight:700}
+.drawer h2{margin:0;font-size:17px;font-family:var(--f-display);font-weight:700}
+.drawer .role{color:var(--muted);font-size:13px;margin:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12.5px;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere}
+
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.panel h3{margin:0;font-size:15px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.panel h3 small{font-family:var(--f-mono);color:var(--lamp);font-size:12.5px;font-weight:700}
+ul.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+ul.list li{display:flex;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);min-width:0}
+ul.list li:last-child{border-bottom:0}
+.av{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#121530;flex:none}
+.grow{flex:1;min-width:0}
+.t1{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t2{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{flex:none;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.s-idle{background:color-mix(in srgb,var(--idle) 22%,transparent);color:#c3c7e6}
+.s-running{background:color-mix(in srgb,var(--run) 18%,transparent);color:var(--run)}
+.s-waiting{background:color-mix(in srgb,var(--wait) 20%,transparent);color:var(--wait)}
+.s-success{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.s-error{background:color-mix(in srgb,var(--err) 18%,transparent);color:var(--err)}
+.approve{border:0;background:var(--wait);color:#1a1033;font-weight:700;font-size:11.5px;padding:3px 10px;border-radius:999px;flex:none}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:104px 1fr 44px;gap:10px;align-items:center;font-size:12.5px}
+.bar .trk{height:8px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.bar .trk i{display:block;height:100%;border-radius:99px}
+.bar b{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.note{color:var(--muted);font-size:12px;margin:0}
+.donut{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.donut ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:13px;flex:1;min-width:140px}
+.donut li{display:flex;justify-content:space-between;gap:10px}
+.donut li b{font-family:var(--f-mono)}
+.empty{color:var(--muted);font-size:13px;padding:10px 0}
+
+.map{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.map h3{margin:0;font-size:16px}
+.map p{margin:0;color:var(--muted);max-width:75ch}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+code{font-family:var(--f-mono);font-size:12px;color:var(--lamp)}
+.acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none}
+.revise{border:1px solid var(--line);background:var(--panel-2);color:var(--fg);font-weight:600;font-size:11.5px;padding:2px 10px;border-radius:999px}
+.s-returned{background:color-mix(in srgb,var(--lamp) 18%,transparent);color:var(--lamp)}
+.s-retried{background:color-mix(in srgb,var(--idle) 22%,transparent);color:#c3c7e6}
+li.col{flex-direction:column;align-items:stretch}
+li.col .acts{justify-content:flex-start}
+.gate{border:1px dashed color-mix(in srgb,var(--wait) 60%,transparent);border-radius:12px;padding:10px 12px;background:color-mix(in srgb,var(--wait) 7%,transparent)}
+.gate p{margin:4px 0 0;font-size:13px}
+.dlist{display:flex;flex-direction:column}
+.drow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(150px,auto);gap:10px 16px;align-items:center;padding:10px 2px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
+.drow:last-child{border-bottom:0}
+.dmeta{min-width:0}
+.dmeta .t2{white-space:normal}
+.dact{display:flex;justify-content:flex-end}
+@media (max-width:760px){.drow{grid-template-columns:minmax(0,1fr)}.dact{justify-content:flex-start}}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:5px;background:var(--panel-2);color:var(--muted)}
+.tag.cr{color:var(--lamp)}
+.steps{display:flex;align-items:center;overflow-x:auto;padding:3px}
+.st{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;border:2px solid var(--line);color:var(--muted);flex:none}
+.st.done{background:var(--c);border-color:var(--c);color:#14172e}
+.st.cur{border-color:var(--c);color:var(--fg);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 35%,transparent)}
+.st.wait{box-shadow:0 0 0 3px color-mix(in srgb,var(--wait) 55%,transparent)}
+.st.err{box-shadow:0 0 0 3px color-mix(in srgb,var(--err) 60%,transparent)}
+.st.skip{opacity:.4;border-style:dashed}
+.link{width:10px;height:2px;background:var(--line);flex:none}
+.link.on{background:var(--c)}
+.inbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:12px}
+.ibhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.ibhead h2{margin:0;font-size:18px;font-weight:800}
+.tabs{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:3px}
+.tabs button{border:0;background:none;padding:6px 12px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--lamp);color:#20160a}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 14px}
+.form .full{grid-column:1/-1}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--muted);min-width:0}
+.fld input,.fld select,.fld textarea{font:inherit;font-size:14px;font-weight:400;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+.fld textarea{resize:vertical;line-height:1.5}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid var(--lamp);outline-offset:0;border-color:transparent}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row.end{justify-content:flex-end}
+.row.end .note{flex:1;min-width:180px}
+fieldset{border:1px solid var(--line);border-radius:12px;padding:10px 12px 12px;margin:0;min-width:0}
+legend{font-size:12.5px;font-weight:600;color:var(--muted);padding:0 4px}
+.cks{display:flex;flex-wrap:wrap;gap:6px 16px}
+.ck{display:flex;gap:7px;align-items:center;font-size:13px;cursor:pointer}
+.ck input{accent-color:var(--lamp);width:16px;height:16px}
+.sr{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.filebtn{cursor:pointer}
+#reqFile:focus-visible+.note,.filebtn:focus-within{outline:2px solid var(--lamp)}
+.hintbox{margin:0;font-size:13px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--run) 9%,transparent);border:1px solid color-mix(in srgb,var(--run) 35%,transparent)}
+.hintbox.bad{background:color-mix(in srgb,var(--err) 9%,transparent);border-color:color-mix(in srgb,var(--err) 40%,transparent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:none}
+.ibfoot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px}
+.dmore{grid-column:1/-1;font-size:13px}
+.dmore summary{cursor:pointer;color:var(--muted);font-size:12.5px;width:max-content}
+.dmore[open]{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--f-body);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:180px;overflow:auto;width:100%}
+.notes{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.instr{font-size:12px;color:var(--lamp);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Văn phòng BA AI <span class="badge">Bản thử</span></h1>
+      <p>Mỗi yêu cầu đi lần lượt qua từng phòng và dừng chờ bạn duyệt trước khi sang bước tiếp theo.</p>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </header>
+
+  <section class="inbox" id="inbox" aria-labelledby="inboxTitle">
+    <div class="ibhead">
+      <h2 id="inboxTitle">Gửi yêu cầu</h2>
+      <span class="note">Mỗi yêu cầu bắt đầu ở Quân. Muốn giao thêm việc cho một agent, chọn phòng của agent đó.</span>
+    </div>
+    <form id="f-req" class="form" novalidate>
+      <label class="fld">Tiêu đề<input id="reqTitle" maxlength="120" autocomplete="off" placeholder="VD: Khoá thẻ tạm thời trên app"></label>
+      <label class="fld">Loại<select id="reqType"><option value="new">Yêu cầu mới</option><option value="cr">Change request</option></select></label>
+      <label class="fld" id="parentWrap" hidden>Thay đổi cho hồ sơ<select id="reqParent"></select></label>
+      <label class="fld">Nguồn<input id="reqSource" maxlength="160" autocomplete="off" placeholder="VD: Họp với PO 06/11, email team Thẻ"></label>
+      <label class="fld full">Nội dung đầu vào<textarea id="reqBody" rows="6" placeholder="Dán ghi chú họp, email, mô tả yêu cầu hoặc nhập từ file…"></textarea></label>
+      <div class="full row"><label class="btn filebtn" for="reqFile">⇪ Nhập từ file .txt / .md</label><input type="file" id="reqFile" accept=".txt,.md,text/plain,text/markdown" class="sr"><span class="note" id="fileNote" aria-live="polite"></span></div>
+      <fieldset class="full" id="stepsWrap"><legend>Bước cần chạy sau Quân <span class="note">· bỏ tick bước không cần, Quân xác nhận lại ở cổng 1</span></legend><div class="cks" id="reqSteps"></div></fieldset>
+      <div class="full row end"><span class="note" id="reqMsg" aria-live="polite"></span><button class="btn primary" type="submit">Gửi vào flow</button></div>
+    </form>
+    <div class="ibfoot"><span class="note">Bản thử: đầu vào lưu trong trình duyệt này, agent trả kết quả mẫu. Khi nối n8n, nút Gửi sẽ chạy workflow BA-01 thật.</span><button class="btn ghost" id="resetData" type="button">Xoá dữ liệu thử</button></div>
+  </section>
+
+  <section class="stage">
+    <div class="office">
+      <div class="toolbar">
+        <div class="chips" id="chips" role="toolbar" aria-label="Lọc theo phòng"></div>
+        <div class="tools">
+          <button class="btn" id="spinBtn" type="button" aria-pressed="false">⟳ Tự xoay</button>
+          <button class="btn" id="resetBtn" type="button">⌖ Góc nhìn</button>
+          <button class="btn primary" id="simBtn" type="button">▶ Mô phỏng</button>
+        </div>
+      </div>
+      <div class="scene" id="scene">
+        <div class="labels" id="labels"></div>
+        <div class="hint">Kéo để xoay · cuộn hoặc chụm để zoom</div>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--idle)"></i>Rảnh</span>
+        <span><i class="dot" style="background:var(--run)"></i>Đang chạy</span>
+        <span><i class="dot" style="background:var(--wait)"></i>Chờ bạn duyệt</span>
+        <span><i class="dot" style="background:var(--ok)"></i>Hoàn thành</span>
+        <span><i class="dot" style="background:var(--err)"></i>Lỗi</span>
+      </div>
+    </div>
+    <aside class="drawer" id="drawer">
+      <div id="dInfo" class="dinfo"></div>
+      <form id="dAssign" class="assign" novalidate>
+        <h3 id="dAssignTitle">Giao việc</h3>
+        <label class="fld">Trong hồ sơ<select id="tDoss"></select></label>
+        <label class="fld">Chỉ thị<textarea id="tText" rows="3" placeholder="VD: Thêm AC cho trường hợp mất kết nối khi đang xác thực"></textarea></label>
+        <p class="hintbox" id="tHint" aria-live="polite"></p>
+        <div class="row end"><span class="note" id="tMsg" aria-live="polite"></span><button class="btn primary" id="tSubmit" type="submit">Giao việc</button></div>
+      </form>
+    </aside>
+  </section>
+
+  <section class="panel dpanel"><h3>Hồ sơ yêu cầu <small id="dossCount"></small></h3><p class="note">Mỗi vòng tròn là một bước trong flow. Vòng đặc là bước bạn đã duyệt, vòng sáng viền là bước đang chạy hoặc chờ bạn, vòng nét đứt là bước được bỏ qua.</p><div id="doss" class="dlist"></div></section>
+
+  <section class="grid4">
+    <div class="panel"><h3>Nhân viên AI <small id="agentCount"></small></h3><ul class="list" id="agentList"></ul></div>
+    <div class="panel"><h3>Việc gần đây</h3><ul class="list" id="feed"></ul></div>
+    <div class="panel"><h3>Được duyệt ngay lần đầu</h3><div class="bars" id="bars"></div><p class="note">Tỉ lệ output bạn duyệt mà không cần yêu cầu sửa.</p></div>
+    <div class="panel"><h3>Tiến độ hồ sơ <small id="todayCount"></small></h3><div class="donut" id="donut"></div></div>
+  </section>
+
+  <section class="map">
+    <h3>Cách văn phòng đọc dữ liệu từ n8n</h3>
+    <p>Mỗi agent là một workflow n8n gắn tag <code>ba-office</code>, đặt tên theo bước trong flow, ví dụ <code>BA-02 · Bóc tách yêu cầu</code> cho Mai. Mỗi workflow kết thúc bằng node Wait: output chỉ chuyển sang agent kế tiếp khi bạn bấm Duyệt. Mỗi execution là một lần agent xử lý một hồ sơ.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Trạng thái n8n</th><th>Hiển thị</th><th>Ý nghĩa với BA</th></tr></thead>
+      <tbody>
+        <tr><td><code>running</code></td><td><span class="pill s-running">Đang chạy</span></td><td>Agent đang xử lý, màn hình sáng xanh, nhân vật gõ phím</td></tr>
+        <tr><td><code>waiting</code></td><td><span class="pill s-waiting">Chờ duyệt</span></td><td>Workflow dừng ở cổng duyệt. Bạn chọn Duyệt (sang bước sau), Yêu cầu sửa (agent làm lại) hoặc Trả về bước trước</td></tr>
+        <tr><td><code>success</code></td><td><span class="pill s-success">Hoàn thành</span></td><td>Output vào Lưu trữ</td></tr>
+        <tr><td><code>error</code> / <code>crashed</code></td><td><span class="pill s-error">Lỗi</span></td><td>Mở execution trong n8n để xem node lỗi</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/* Sequential flow. Every step ends at a gate (n8n Wait node) and only moves on when you approve.
+   New requirement: Quân → Mai → Bảo → Vy → Tú → Đạt → Linh → Lưu trữ
+   Change request:  Quân → Khoa → re-enter the new-requirement flow at the earliest affected step */
+const AGENTS=[
+  {id:"orch",name:"Quân",task:"Tiếp nhận & phân loại",role:"Đọc yêu cầu đầu vào (email, ghi chú họp, ticket), gán mã hồ sơ, phân loại yêu cầu mới hay change request, đề xuất các bước cần chạy",check:"Đúng loại yêu cầu, đúng phạm vi, danh sách bước cần chạy hợp lý (bước nào bỏ qua phải có lý do)",room:[0,0,3,3.4],color:"#ffb44a"},
+  {id:"elic",name:"Mai",task:"Bóc tách yêu cầu",role:"Biến nội dung thô thành danh sách yêu cầu có mã REQ, kèm giả định và câu hỏi mở cho stakeholder",check:"Không sót ý nào so với nguồn, mỗi yêu cầu có mã, giả định và câu hỏi mở ghi tách riêng",room:[3,0,3,3.4],color:"#4cc4ff"},
+  {id:"brd",name:"Bảo",task:"Soạn BRD / FRS",role:"Soạn BRD/FRS từ danh sách REQ đã duyệt, có phần giả định, open questions và truy vết",check:"Mọi REQ đều có trong tài liệu, quy tắc nghiệp vụ ghi rõ nguồn, không tự thêm số liệu hay quy định",room:[6,0,3,3.4],color:"#f78fb3"},
+  {id:"bpmn",name:"Vy",task:"Vẽ luồng BPMN",role:"Vẽ luồng chính và luồng ngoại lệ từ FRS đã duyệt",check:"Actor, điểm quyết định, luồng ngoại lệ khớp với FRS; không có nhánh cụt",room:[9,0,3,3.4],color:"#c49bff"},
+  {id:"story",name:"Tú",task:"Viết user story & AC",role:"Viết user story và AC Given/When/Then từ FRS và BPMN đã duyệt",check:"Mỗi REQ có ít nhất một story; AC phủ cả luồng chính lẫn luồng ngoại lệ trong BPMN",room:[0,4.6,3,3.4],color:"#7ee0c3"},
+  {id:"data",name:"Đạt",task:"Mapping dữ liệu",role:"Mapping field nguồn ↔ đích, kiểu dữ liệu, quy tắc chuyển đổi cho các story có dữ liệu",check:"Đủ field cho các story liên quan, quy tắc chuyển đổi rõ, field chưa có nguồn được đánh dấu",room:[3,4.6,3,3.4],color:"#9fb4ff"},
+  {id:"review",name:"Linh",task:"Rà soát tổng thể",role:"Lập ma trận truy vết REQ → BRD/FRS → BPMN → story → mapping, tìm chỗ hở trước khi chốt",check:"Ma trận truy vết không còn ô trống, không còn câu hỏi mở chặn, mâu thuẫn đã xử lý",room:[6,4.6,3,3.4],color:"#ffd36e"},
+  {id:"impact",name:"Khoa",task:"Phân tích tác động",role:"Với change request: tìm REQ, tài liệu, story, dữ liệu bị ảnh hưởng và đề xuất bước cần làm lại",check:"Đủ danh sách thành phần bị ảnh hưởng, chọn đúng bước quay lại trong flow",room:[9,4.6,3,3.4],color:"#ff9b71"}
+];
+const FLOW_NEW=["orch","elic","brd","bpmn","story","data","review"];
+AGENTS.forEach(a=>{a.short=a.name[0];const i=FLOW_NEW.indexOf(a.id);a.step=i>=0?i+1:null;a.wf=i>=0?`BA-${String(i+1).padStart(2,"0")} · ${a.task}`:`BA-CR · ${a.task}`;});
+const SPECIAL={approve:{name:"Bàn duyệt",room:[12.4,0,3,3.4],color:"#b98cff"},archive:{name:"Lưu trữ",room:[12.4,4.6,3,3.4],color:"#43d39a"}};
+const byId=Object.fromEntries(AGENTS.map(a=>[a.id,a]));
+
+/* ---- sample data (example only; replaced by n8n executions once connected) ---- */
+const T=(h,m)=>{const d=new Date();d.setHours(h,m,0,0);return d.getTime()};
+const pad=n=>String(n).padStart(3,"0");
+let dossiers=[], tasks=[], nextId=1, nextReq=1, nextCr=1, nextTask=1;
+const mkDoss=(o)=>Object.assign({type:"new",route:[...FLOW_NEW],input:"",source:"",notes:[],resetAt:{},created:Date.now()},o);
+function add(doss,agent,status,at,extra={}){
+  const t={id:nextId++,doss,agent,status,at,...extra};
+  const d=dossById(doss);
+  if(status==="running"&&d){ // pending instructions for this agent apply when it starts
+    const pend=d.notes.filter(n=>n.agent===agent&&!n.applied);
+    if(pend.length){pend.forEach(n=>{n.applied=true;n.appliedAt=at;});t.instr=pend.map(n=>n.text);}
+  }
+  tasks.push(t);return t;
+}
+function seed(){
+  dossiers=[
+    mkDoss({id:"REQ-001",title:"Chuyển tiền 24/7",source:"Ví dụ",input:"Ví dụ: ghi chú họp về chuyển tiền nhanh ngoài giờ hành chính."}),
+    mkDoss({id:"REQ-002",title:"Mở thẻ tín dụng trên app",source:"Ví dụ",input:"Ví dụ: khách hàng muốn đăng ký thẻ tín dụng ngay trên app."}),
+    mkDoss({id:"REQ-003",title:"Thông báo biến động số dư",source:"Ví dụ",input:"Ví dụ: đổi nội dung thông báo biến động số dư.",route:FLOW_NEW.filter(s=>s!=="data")}),
+    mkDoss({id:"REQ-004",title:"Onboarding eKYC",source:"Ví dụ",input:"Ví dụ: ghi chú họp về luồng mở tài khoản bằng eKYC."}),
+    mkDoss({id:"CR-001",title:"Đổi hạn mức giao dịch",type:"cr",parent:"REQ-001",route:["orch","impact"],source:"Ví dụ",input:"Ví dụ: thay đổi hạn mức cho chuyển tiền 24/7."})
+  ];
+  tasks=[];nextId=1;nextReq=5;nextCr=2;nextTask=1;
+  FLOW_NEW.forEach((s,i)=>add("REQ-001",s,"success",T(8,0)+i*22*60000));
+  ["orch","elic","brd"].forEach((s,i)=>add("REQ-002",s,"success",T(9,10)+i*25*60000)); add("REQ-002","bpmn","waiting",T(10,40));
+  ["orch","elic","brd","bpmn"].forEach((s,i)=>add("REQ-003",s,"success",T(11,0)+i*20*60000)); add("REQ-003","story","running",Date.now()-60000);
+  add("REQ-004","orch","success",T(13,5)); add("REQ-004","elic","returned",T(13,30),{note:"Bạn yêu cầu sửa: thiếu yêu cầu về giấy tờ tuỳ thân"}); add("REQ-004","elic","waiting",T(13,52),{rev:2});
+  add("CR-001","orch","success",T(14,0)); add("CR-001","impact","error",T(14,12),{note:"Node gọi LLM hết thời gian chờ"});
+}
+const KEY="ba-office-v5";
+function save(){try{localStorage.setItem(KEY,JSON.stringify({dossiers,tasks,nextId,nextReq,nextCr,nextTask}));}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.dossiers)&&Array.isArray(s.tasks)){({dossiers,tasks,nextId,nextReq,nextCr,nextTask}=s);return true;}}catch(e){}return false;}
+
+let filter="all", selected="orch", simTimer=null;
+const STATUS_VI={idle:"Rảnh",running:"Đang chạy",waiting:"Chờ duyệt",success:"Đã duyệt",error:"Lỗi",returned:"Trả sửa",retried:"Đã chạy lại",done:"Đã chốt"};
+const SC={idle:"var(--idle)",running:"var(--run)",waiting:"var(--wait)",success:"var(--ok)",error:"var(--err)",returned:"var(--lamp)",done:"var(--ok)"};
+const HEX={idle:0x6c729e,running:0x4cc4ff,waiting:0xb98cff,success:0x43d39a,error:0xff6b7c};
+const reduceMotion=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NEW_TITLES=["Đăng nhập sinh trắc học","Khoá thẻ trên app","Nhắc thanh toán thẻ","Lịch sử giao dịch","Tra soát giao dịch","Tiết kiệm online","Đổi PIN thẻ"];
+const CR_TITLES=["Thêm bước OTP khi đổi thiết bị","Đổi luồng onboarding","Cập nhật mẫu thông báo"];
+
+const dossById=id=>dossiers.find(d=>d.id===id);
+const dTasks=d=>tasks.filter(t=>t.doss===d.id).sort((a,b)=>a.at-b.at||a.id-b.id);
+function dState(d){
+  const ts=dTasks(d), last=ts[ts.length-1];
+  if(!last)return"running";
+  if(last.status==="success"&&last.agent===d.route[d.route.length-1]&&!(d.type==="cr"&&d.route.length===2))return"done";
+  if(last.status==="success")return"running";
+  return last.status;
+}
+function stepState(d,s){
+  if(!d.route.includes(s))return"skip";
+  const from=(d.resetAt||{})[s]||0; // a reopened earlier step makes later approvals stale
+  const ts=dTasks(d).filter(t=>t.agent===s&&t.id>=from), last=ts[ts.length-1];
+  if(!last)return"todo";
+  return last.status;
+}
+function agentStatus(id){
+  const live=dossiers.map(d=>{const ts=dTasks(d);return ts[ts.length-1];}).filter(t=>t&&t.agent===id);
+  if(live.some(t=>t.status==="running"))return"running";
+  if(live.some(t=>t.status==="waiting"))return"waiting";
+  if(live.some(t=>t.status==="error"))return"error";
+  return"idle";
+}
+const doneCount=()=>dossiers.filter(d=>dState(d)==="done").length;
+const fmt=ms=>new Date(ms).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const skipped=d=>d.type==="new"?FLOW_NEW.filter(s=>!d.route.includes(s)):[];
+if(!load())seed();
+
+/* ================= 3D office ================= */
+const G={ok:false};
+function initScene(){
+  const host=document.getElementById("scene");
+  if(!window.THREE||!THREE.OrbitControls){host.insertAdjacentHTML("beforeend",`<div class="nogl">Không tải được thư viện 3D. Các bảng bên dưới vẫn hoạt động.</div>`);return;}
+  let renderer;
+  try{renderer=new THREE.WebGLRenderer({antialias:true});}catch(e){host.insertAdjacentHTML("beforeend",`<div class="nogl">Trình duyệt này chưa bật WebGL nên không hiển thị được văn phòng 3D.</div>`);return;}
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  host.prepend(renderer.domElement);
+
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0e1126);
+  scene.fog=new THREE.Fog(0x0e1126,26,48);
+  const camera=new THREE.PerspectiveCamera(38,1,0.1,200);
+  const HOME=new THREE.Vector3(9.5,12.5,14.5);
+  camera.position.copy(HOME);
+  const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.target.set(0,0,0.4);controls.enableDamping=true;controls.dampingFactor=.08;
+  controls.maxPolarAngle=1.28;controls.minDistance=7;controls.maxDistance=32;controls.autoRotateSpeed=0.7;
+  controls.update();
+
+  scene.add(new THREE.HemisphereLight(0x9aa8ff,0x1a1534,0.55));
+  const sun=new THREE.DirectionalLight(0xfff1dd,0.55);
+  sun.position.set(8,16,7);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+  Object.assign(sun.shadow.camera,{left:-12,right:12,top:10,bottom:-10,near:1,far:40});
+  scene.add(sun);
+
+  const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.75,metalness:.05},o));
+  const mesh=(geo,mat,x,y,z,parent,shadow=true)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=shadow;m.receiveShadow=true;parent.add(m);return m;};
+  const B=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
+
+  // ground + corridor + city glow
+  const ground=mesh(new THREE.PlaneGeometry(60,60),M(0x101432,{roughness:1}),0,-0.02,0,scene,false);ground.rotation.x=-Math.PI/2;
+  const slab=mesh(B(16.2,0.3,8.8),M(0x1a1f45),0,-0.15,0,scene,false);
+  const corr=mesh(B(15.6,0.04,1.1),M(0x22285a),0,0.02,0,scene,false);
+  const edge=new THREE.Mesh(B(16.24,0.04,8.84),new THREE.MeshBasicMaterial({color:0xff6fd8}));edge.position.y=-0.01;scene.add(edge);
+  for(let i=0;i<70;i++){ // distant city blocks
+    const h=1+Math.random()*7, a=Math.random()*Math.PI*2, r=20+Math.random()*12;
+    const b=mesh(B(1.2+Math.random()*1.5,h,1.2+Math.random()*1.5),M(0x151a3d,{emissive:[0x2a2f70,0x3b2a6a,0x1d3a5e][i%3],emissiveIntensity:.25}),Math.cos(a)*r,h/2-0.3,Math.sin(a)*r,scene,false);
+  }
+
+  const toW=(x,y)=>[x-7.7,y-4];
+  const rooms={};
+  function roomShell(key,r,tint){
+    const [x,y,w,d]=r, g=new THREE.Group(), [wx,wz]=toW(x,y);
+    g.position.set(wx,0,wz);scene.add(g);
+    const tc=new THREE.Color(tint), base=new THREE.Color(0x2b2f55).lerp(tc,.1);
+    const mats=[];const mm=(c,o)=>{const m=M(c,o);mats.push(m);return m;};
+    mesh(B(w-0.12,0.1,d-0.12),mm(base),w/2,0.05,d/2,g,false);
+    const rug=mesh(B(1.9,0.02,1.5),mm(tc.clone().multiplyScalar(.45),{roughness:1}),w/2+0.1,0.11,d/2+0.1,g,false);
+    mesh(B(w-0.06,1.15,0.08),mm(0x343a6e),w/2,0.62,0.04,g);
+    mesh(B(0.08,1.15,d-0.06),mm(0x2e3463),0.04,0.62,d/2,g);
+    const strip=new THREE.MeshBasicMaterial({color:tint});mats.push(strip);
+    mesh(B(w-0.06,0.05,0.1),strip,w/2,1.22,0.04,g,false);
+    mesh(B(0.1,0.05,d-0.06),strip,0.04,1.22,d/2,g,false);
+    // window on back wall
+    mesh(B(1.1,0.5,0.02),mm(0x203a6e,{emissive:0x2a4a8a,emissiveIntensity:.5}),w-0.85,0.78,0.09,g,false);
+    const hit=new THREE.Mesh(B(w,1.4,d),new THREE.MeshBasicMaterial({visible:false}));hit.position.set(w/2,0.7,d/2);hit.userData.id=key;g.add(hit);
+    return {g,mats,w,d,hit,center:new THREE.Vector3(wx+w/2,0,wz+d/2)};
+  }
+  function markerSprite(ch,col){
+    const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d");
+    x.fillStyle=col;x.beginPath();x.arc(32,32,28,0,7);x.fill();x.fillStyle="#16112e";x.font="bold 40px sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText(ch,32,35);
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(.42,.42,1);s.renderOrder=5;return s;
+  }
+  function buildAgent(a){
+    const R=roomShell(a.id,a.room,a.color), g=R.g, mats=R.mats, mm=(c,o)=>{const m=M(c,o);mats.push(m);return m;};
+    const dx=1.55, dz=1.25;
+    // desk
+    mesh(B(1.5,0.07,0.75),mm(0xc9a27a,{roughness:.6}),dx,0.74,dz,g);
+    [[-.68,-.32],[.68,-.32],[-.68,.32],[.68,.32]].forEach(([ox,oz])=>mesh(B(0.06,0.7,0.06),mm(0x7e6146),dx+ox,0.39,dz+oz,g));
+    // monitor
+    const screenMat=mm(0x3b4170,{emissive:0x000000,roughness:.3});
+    const screen=mesh(B(0.78,0.46,0.04),screenMat,dx,1.1,dz-0.22,g);
+    mesh(B(0.06,0.22,0.06),mm(0x2a2f57),dx,0.88,dz-0.22,g);
+    mesh(B(0.42,0.02,0.16),mm(0x4a4f7a),dx,0.79,dz+0.05,g); // keyboard
+    // mug + papers
+    mesh(new THREE.CylinderGeometry(.05,.05,.1,12),mm(new THREE.Color(a.color)),dx+0.55,0.83,dz+0.1,g);
+    mesh(B(0.26,0.03,0.34),mm(0xf2efe6),dx-0.52,0.79,dz+0.05,g);
+    // chair
+    mesh(B(0.5,0.08,0.5),mm(0x2a2f57),dx,0.46,dz+0.75,g);
+    mesh(B(0.5,0.55,0.07),mm(0x2a2f57),dx,0.76,dz+1.0,g);
+    mesh(new THREE.CylinderGeometry(.04,.04,.4,8),mm(0x555b88),dx,0.22,dz+0.75,g);
+    // plant
+    mesh(new THREE.CylinderGeometry(.16,.12,.32,12),mm(0x8a5a3c),0.42,0.26,0.42,g);
+    mesh(new THREE.SphereGeometry(.3,14,10),mm(0x3f9a62,{roughness:.9}),0.42,0.68,0.42,g);
+    // bookshelf
+    mesh(B(0.9,1.0,0.28),mm(0x6b4f3a),R.w-0.65,0.6,0.28,g);
+    for(let i=0;i<6;i++)mesh(B(0.1,0.28,0.2),mm([0xff9b71,0x4cc4ff,0xf78fb3,0xffd36e,0x7ee0c3,0xc49bff][i]),R.w-1.0+i*0.14,0.92,0.3,g,false);
+    // avatar (seated, facing desk)
+    const av=new THREE.Group();av.position.set(dx,0,dz+0.72);g.add(av);
+    const shirt=mm(new THREE.Color(a.color),{roughness:.6});
+    mesh(new THREE.CylinderGeometry(.17,.22,.5,16),shirt,0,0.78,0,av);
+    const head=mesh(new THREE.SphereGeometry(.16,18,14),mm(0xf2d3b3),0,1.17,0,av);
+    const hair=mesh(new THREE.SphereGeometry(.168,18,10,0,Math.PI*2,0,Math.PI/2),mm(0x2a2140),0,1.19,0.01,av);
+    const armL=mesh(B(.08,.08,.38),shirt,-0.2,0.86,-0.18,av), armR=mesh(B(.08,.08,.38),shirt,0.2,0.86,-0.18,av);
+    // status ring + light + markers
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.42,.5,40),new THREE.MeshBasicMaterial({color:HEX.idle,transparent:true,opacity:.5,side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2;ring.position.set(dx,0.13,dz+0.72);g.add(ring);mats.push(ring.material);
+    const light=new THREE.PointLight(HEX.running,0,4.2,2);light.position.set(dx,1.9,dz+0.2);g.add(light);
+    const warn=markerSprite("!","#b98cff"), err=markerSprite("×","#ff6b7c");
+    [warn,err].forEach(s=>{s.position.set(dx,1.75,dz+0.72);s.visible=false;g.add(s);});
+    rooms[a.id]={...R,screenMat,av,armL,armR,ring,light,warn,err,status:"idle",phase:Math.random()*6};
+  }
+  AGENTS.forEach(buildAgent);
+
+  // Bàn duyệt + Lưu trữ
+  const ap=roomShell("approve",SPECIAL.approve.room,SPECIAL.approve.color);
+  mesh(B(1.9,0.07,0.95),M(0x3f3a73),1.5,0.74,1.4,ap.g);
+  [[-.85,-.4],[.85,-.4],[-.85,.4],[.85,.4]].forEach(([ox,oz])=>mesh(B(0.06,0.7,0.06),M(0x29264d),1.5+ox,0.39,1.4+oz,ap.g));
+  const apStacks=new THREE.Group();ap.g.add(apStacks);
+  const ar=roomShell("archive",SPECIAL.archive.room,SPECIAL.archive.color);
+  for(let i=0;i<3;i++){mesh(B(0.7,1.6,0.4),M(0x2e5a49),0.6+i*0.85,0.85,0.35,ar.g);for(let s=0;s<3;s++)mesh(B(0.62,0.03,0.34),M(0x3f7a63),0.6+i*0.85,0.4+s*0.45,0.37,ar.g,false);}
+  const arStacks=new THREE.Group();ar.g.add(arStacks);
+  const paperMat=M(0xe8dcff,{roughness:.9}), paperDone=M(0xcfeee0,{roughness:.9});
+  function stacks(group,n,mat,ox,oz,y0){
+    while(group.children.length)group.remove(group.children[0]);
+    for(let i=0;i<Math.min(n,12);i++){const col=i%4,row=Math.floor(i/4);mesh(B(0.32,0.12,0.42),mat,ox+col*0.4,y0+0.06,oz+row*0.5,group);}
+  }
+
+  // walkers in the corridor
+  const walkers=[0x4cc4ff,0xffb44a,0xf78fb3].map((c,i)=>{
+    const w=new THREE.Group();scene.add(w);
+    mesh(new THREE.CylinderGeometry(.14,.17,.5,14),M(c),0,0.42,0,w);
+    mesh(new THREE.SphereGeometry(.14,14,12),M(0xf2d3b3),0,0.82,0,w);
+    mesh(new THREE.SphereGeometry(.146,14,8,0,Math.PI*2,0,Math.PI/2),M(0x2a2140),0,0.84,0,w);
+    return {w,speed:.18+i*.07,off:i*2.1,lane:(i-1)*0.3};
+  });
+
+  // labels
+  const labelsEl=document.getElementById("labels");
+  const labelDefs=[...AGENTS.map(a=>({id:a.id,name:a.name,task:a.task,color:a.color,R:rooms[a.id]})),{id:"approve",name:"Bàn duyệt",task:"Bạn duyệt output",color:SPECIAL.approve.color,R:ap},{id:"archive",name:"Lưu trữ",task:"Output đã chốt",color:SPECIAL.archive.color,R:ar}];
+  labelDefs.forEach(L=>{
+    const b=document.createElement("button");b.type="button";b.className="lbl";b.style.setProperty("--c",L.color);
+    if(byId[L.id])b.dataset.id=L.id;
+    b.innerHTML=`<i></i><span class="lt"><span class="ln"></span><small>${esc(L.task)}</small></span>`;labelsEl.appendChild(b);L.el=b;
+    L.anchor=L.R.center.clone();L.anchor.y=1.75;L.anchor.z-=0.9;
+  });
+
+  // picking
+  const ray=new THREE.Raycaster(), ptr=new THREE.Vector2();let down=null;
+  renderer.domElement.addEventListener("pointerdown",e=>{down=[e.clientX,e.clientY];});
+  renderer.domElement.addEventListener("pointerup",e=>{
+    if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5)return;
+    const r=renderer.domElement.getBoundingClientRect();
+    ptr.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+    ray.setFromCamera(ptr,camera);
+    const hits=ray.intersectObjects(Object.values(rooms).map(R=>R.hit));
+    if(hits.length){selected=hits[0].object.userData.id;render();}
+  });
+
+  function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<600?50:38;camera.updateProjectionMatrix();}
+  new ResizeObserver(resize).observe(host);resize();
+
+  G.ok=true;
+  G.reset=()=>{camera.position.copy(HOME);controls.target.set(0,0,0.4);controls.update();};
+  G.spin=v=>{controls.autoRotate=v;};
+  G.update=()=>{
+    const waiting=tasks.filter(t=>t.status==="waiting").length, done=doneCount();
+    for(const a of AGENTS){
+      const R=rooms[a.id], st=agentStatus(a.id);R.status=st;
+      const col=HEX[st];
+      R.screenMat.color.setHex(st==="idle"?0x3b4170:0x101425);
+      R.screenMat.emissive.setHex(st==="idle"?0x000000:col);R.screenMat.emissiveIntensity=st==="idle"?0:1.1;
+      R.ring.material.color.setHex(col);R.ring.material.opacity=st==="idle"?.25:.85;
+      R.light.color.setHex(col);R.light.intensity=st==="idle"?0:1.6;
+      R.warn.visible=st==="waiting";R.err.visible=st==="error";
+      const dim=filter!=="all"&&filter!==a.id;
+      R.mats.forEach(m=>{m.transparent=dim||m===R.ring.material;m.opacity=dim?(m===R.ring.material?.1:.22):(m===R.ring.material?m.opacity:1);m.needsUpdate=true;});
+      if(dim)R.ring.material.opacity=.1;
+    }
+    [ap,ar].forEach(R=>R.mats.forEach(m=>{const dim=filter!=="all";m.transparent=dim;m.opacity=dim?.22:1;m.needsUpdate=true;}));
+    stacks(apStacks,waiting,paperMat,0.9,1.2,0.78);
+    stacks(arStacks,done,paperDone,0.6,1.5,0.1);
+    labelDefs.forEach(L=>{
+      let st,cnt;
+      if(byId[L.id]){st=agentStatus(L.id);cnt=tasks.filter(t=>t.agent===L.id&&t.status==="success").length;}
+      else if(L.id==="approve"){st=waiting?"waiting":"idle";cnt=waiting;}else{st="success";cnt=done;}
+      L.el.style.setProperty("--s",SC[st]);
+      L.el.querySelector(".ln").textContent=L.name+(cnt?` · ${cnt}`:"");
+      L.el.classList.toggle("sel",L.id===selected);
+      L.el.classList.toggle("dim",filter!=="all"&&filter!==L.id);
+      L.el.setAttribute("aria-label",`${L.name}: ${STATUS_VI[st]}`);
+    });
+  };
+
+  const v=new THREE.Vector3(), clock=new THREE.Clock();
+  (function loop(){
+    requestAnimationFrame(loop);
+    const t=clock.getElapsedTime();
+    controls.update();
+    for(const a of AGENTS){
+      const R=rooms[a.id];
+      if(R.status==="running"&&!reduceMotion){
+        R.av.position.y=Math.abs(Math.sin(t*5+R.phase))*0.03;
+        R.armL.position.y=0.86+Math.sin(t*14+R.phase)*0.025;R.armR.position.y=0.86+Math.cos(t*14+R.phase)*0.025;
+        const s=1+((t*0.8+R.phase)%1)*0.5;R.ring.scale.set(s,s,1);R.ring.material.opacity=Math.max(0,.9-((t*0.8+R.phase)%1));
+        R.light.intensity=1.4+Math.sin(t*9+R.phase)*0.25;
+      }else{R.av.position.y=0;R.ring.scale.set(1,1,1);}
+      if(!reduceMotion){R.warn.position.y=1.75+Math.sin(t*3)*0.06;R.err.position.y=1.75+Math.sin(t*3)*0.06;}
+    }
+    walkers.forEach(W=>{
+      const p=reduceMotion?W.off:Math.sin(t*W.speed+W.off)*7;
+      const vx=Math.cos(t*W.speed+W.off);
+      W.w.position.set(p,reduceMotion?0:Math.abs(Math.sin(t*8+W.off))*0.04,W.lane);
+      W.w.rotation.y=vx>0?Math.PI/2:-Math.PI/2;
+    });
+    renderer.render(scene,camera);
+    const w=host.clientWidth,h=host.clientHeight;
+    labelDefs.forEach(L=>{
+      v.copy(L.anchor).project(camera);
+      const vis=v.z<1&&v.x>-1.1&&v.x<1.1&&v.y>-1.1&&v.y<1.1;
+      L.el.style.visibility=vis?"visible":"hidden";
+      L.el.style.transform=`translate(${(v.x*.5+.5)*w}px,${(-v.y*.5+.5)*h}px) translate(-50%,-100%)`;
+    });
+  })();
+}
+
+/* ================= panels ================= */
+function prevStep(t){const d=dossById(t.doss);const i=d.route.indexOf(t.agent);return i>0?d.route[i-1]:null;}
+function actions(t,full){
+  if(t.status==="waiting")return`<span class="acts"><button class="approve" type="button" data-approve="${t.id}">Duyệt</button><button class="revise" type="button" data-revise="${t.id}">Yêu cầu sửa</button>${full&&prevStep(t)?`<button class="revise" type="button" data-back="${t.id}">Trả về ${esc(byId[prevStep(t)].name)}</button>`:""}</span>`;
+  if(t.status==="error")return`<span class="acts"><button class="revise" type="button" data-retry="${t.id}">Chạy lại</button></span>`;
+  return`<span class="pill s-${t.status}">${STATUS_VI[t.status]}</span>`;
+}
+function taskRow(t){
+  const a=byId[t.agent], d=dossById(t.doss);
+  return`<li><span class="av" style="background:${a.color}">${a.short}</span><div class="grow"><div class="t1" title="${esc(d.title)}">${esc(d.title)}</div><div class="t2">${esc(d.id)} · ${esc(a.name)} · ${esc(a.task)}${t.rev?` (lần ${t.rev})`:""} · ${fmt(t.at)}${t.instr?" · có chỉ thị của bạn":""}${t.note?" · "+esc(t.note):""}</div></div>${actions(t,false)}</li>`;
+}
+function routeSteps(d){return d.type==="new"?FLOW_NEW:d.type==="cr"?["orch","impact",...d.route.slice(2)]:d.route;}
+function tracker(d){
+  return`<div class="steps" aria-label="Tiến trình ${esc(d.id)}">`+routeSteps(d).map((s,i)=>{
+    const a=byId[s], st=stepState(d,s);
+    const cls={success:"done",running:"cur run",waiting:"cur wait",error:"cur err",returned:"cur",retried:"cur",skip:"skip",todo:""}[st]||"";
+    const tip=`${a.name} · ${a.task}: ${st==="skip"?"Bỏ qua":st==="todo"?"Chưa tới":STATUS_VI[st]}`;
+    return`${i?`<span class="link${st==="success"?" on":""}" style="--c:${a.color}"></span>`:""}<span class="st ${cls}" style="--c:${a.color}" title="${esc(tip)}">${a.short}</span>`;
+  }).join("")+`</div>`;
+}
+const TYPE_VI={new:"Yêu cầu mới",cr:"Change request",adhoc:"Việc lẻ"};
+function dossRow(d){
+  const ts=dTasks(d), last=ts[ts.length-1], st=dState(d);
+  const where=st==="done"?"Đã vào Lưu trữ":`${byId[last.agent].name} · ${byId[last.agent].task}`;
+  const sk=skipped(d);
+  const notes=d.notes.length?`<ul class="notes">${d.notes.map(n=>`<li><b>${esc(byId[n.agent].name)}:</b> ${esc(n.text)} <span class="pill ${n.note?"s-idle":n.applied?"s-success":"s-waiting"}">${n.note?esc(n.note):n.applied?"Đã áp dụng":"Chờ tới bước"}</span></li>`).join("")}</ul>`:"";
+  return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">Đã chốt</span>`:actions(last,false)}</div>`+
+  `<details class="dmore"><summary>Đầu vào${d.notes.length?" & chỉ thị":""}</summary>${d.source?`<p class="t2" style="white-space:normal">Nguồn: ${esc(d.source)}</p>`:""}<pre class="input">${esc(d.input||"(trống)")}</pre>${notes}<button class="revise" type="button" data-assign-doss="${esc(d.id)}">＋ Giao việc trong hồ sơ này</button></details></div>`;
+}
+function render(){
+  if(G.ok)G.update();
+  const c=k=>tasks.filter(t=>t.status===k).length;
+  const live=dossiers.map(d=>dState(d)), dn=doneCount();
+  const pct=dossiers.length?Math.round(dn/dossiers.length*100):0;
+  document.getElementById("kpis").innerHTML=
+    `<div class="kpi run"><span>Đang chạy</span><b>${c("running")}</b></div>`+
+    `<div class="kpi wait"><span>Chờ bạn duyệt</span><b>${c("waiting")}</b></div>`+
+    `<div class="kpi ok"><span>Hồ sơ đã chốt</span><b>${dn}<small>${pct}%</small></b></div>`+
+    `<div class="kpi err"><span>Lỗi</span><b>${live.filter(s=>s==="error").length}</b></div>`;
+
+  const chips=[["all","Toàn cảnh"],...AGENTS.map(a=>[a.id,a.name])];
+  document.getElementById("chips").innerHTML=chips.map(([id,n])=>`<button class="chip" type="button" data-f="${id}" aria-pressed="${filter===id}">${esc(n)}</button>`).join("");
+
+  const open=new Set([...document.querySelectorAll(".dmore[open]")].map(x=>x.closest(".drow").querySelector("[data-assign-doss]").dataset.assignDoss));
+  document.getElementById("dossCount").textContent=`${dossiers.length} hồ sơ`;
+  document.getElementById("doss").innerHTML=[...dossiers].reverse().map(dossRow).join("")||`<p class="empty">Chưa có hồ sơ. Gửi yêu cầu đầu tiên ở khu Đầu vào.</p>`;
+  document.querySelectorAll("[data-assign-doss]").forEach(b=>{if(open.has(b.dataset.assignDoss))b.closest(".dmore").open=true;});
+
+  const busy=AGENTS.filter(a=>agentStatus(a.id)==="running").length;
+  document.getElementById("agentCount").textContent=`${busy}/${AGENTS.length} đang chạy`;
+  document.getElementById("agentList").innerHTML=AGENTS.map(a=>{const st=agentStatus(a.id);return`<li data-id="${a.id}" style="cursor:pointer"><span class="av" style="background:${a.color}">${a.short}</span><div class="grow"><div class="t1">${esc(a.name)} <span style="font-weight:500;color:var(--muted)">· ${esc(a.task)}</span></div><div class="t2">${a.step?`Bước ${a.step}`:"Khi có change request"} · ${esc(a.role)}</div></div><span class="pill s-${st}">${STATUS_VI[st]}</span><button class="revise" type="button" data-assign-agent="${a.id}" aria-label="Giao việc cho ${esc(a.name)}">Giao việc</button></li>`}).join("");
+
+  const feed=[...tasks].sort((a,b)=>b.at-a.at||b.id-a.id).slice(0,7);
+  document.getElementById("feed").innerHTML=feed.map(taskRow).join("")||`<li class="empty">Chưa có việc nào.</li>`;
+
+  document.getElementById("bars").innerHTML=AGENTS.map(a=>{
+    const ok=tasks.filter(t=>t.agent===a.id&&t.status==="success").length, back=tasks.filter(t=>t.agent===a.id&&t.status==="returned").length;
+    const v=ok+back?Math.round(ok/(ok+back)*100):null;
+    return`<div class="bar"><span class="t1" style="font-weight:500">${esc(a.name)}</span><span class="trk"><i style="width:${v??0}%;background:${a.color}"></i></span><b>${v===null?"–":v+"%"}</b></div>`}).join("");
+
+  document.getElementById("todayCount").textContent=`${dossiers.length} hồ sơ`;
+  const segs=[["done","Đã chốt"],["running","Đang chạy"],["waiting","Chờ duyệt"],["error","Lỗi"]];
+  const cnt=k=>live.filter(s=>s===k).length;
+  let acc=0;const R=46,C=2*Math.PI*R,total=dossiers.length;
+  const arcs=segs.map(([k])=>{const n=cnt(k);if(!n||!total)return"";const len=n/total*C;const s=`<circle r="${R}" cx="60" cy="60" fill="none" stroke="${SC[k]}" stroke-width="13" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 60 60)"/>`;acc+=len;return s}).join("");
+  document.getElementById("donut").innerHTML=`<svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle r="${R}" cx="60" cy="60" fill="none" stroke="var(--panel-2)" stroke-width="13"/>${arcs}<text x="60" y="60" text-anchor="middle" font-family="var(--f-mono)" font-weight="700" font-size="22" fill="var(--fg)">${pct}%</text><text x="60" y="78" text-anchor="middle" font-size="11" fill="var(--muted)">đã chốt</text></svg><ul>${segs.map(([k,n])=>`<li><span><i class="dot" style="background:${SC[k]}"></i>${n}</span><b>${cnt(k)}</b></li>`).join("")}</ul>`;
+
+  renderDrawer();
+  fillSelects();
+  save();
+}
+function renderDrawer(){
+  const a=byId[selected], st=agentStatus(a.id), ts=tasks.filter(t=>t.agent===a.id).sort((p,q)=>q.at-p.at||q.id-p.id);
+  const i=FLOW_NEW.indexOf(a.id);
+  const from=a.id==="impact"?["Quân (khi là change request)"]:i>0?[`${byId[FLOW_NEW[i-1]].name} · sau khi bạn duyệt`]:["Bạn gửi ở khu Đầu vào"];
+  const to=a.id==="impact"?["Bước bị ảnh hưởng sớm nhất · sau khi bạn duyệt"]:i<FLOW_NEW.length-1?[`${byId[FLOW_NEW[i+1]].name} · sau khi bạn duyệt`]:["Lưu trữ · sau khi bạn duyệt"];
+  const live=dossiers.map(d=>{const x=dTasks(d);return x[x.length-1];}).filter(t=>t&&t.agent===a.id&&(t.status==="waiting"||t.status==="error"||t.status==="running"));
+  document.getElementById("dInfo").innerHTML=
+    `<div style="display:flex;gap:12px;align-items:center"><span class="av" style="background:${a.color};width:40px;height:40px;font-size:16px">${a.short}</span><div class="grow"><span class="step">${a.step?`BƯỚC ${a.step}/${FLOW_NEW.length}`:"NHÁNH CHANGE REQUEST"}</span><h2>${esc(a.name)} · ${esc(a.task)}</h2></div><span class="pill s-${st}">${STATUS_VI[st]}</span></div>`+
+    `<p class="role">${esc(a.role)}</p>`+
+    `<div class="gate"><span class="step">CỔNG DUYỆT · BẠN KIỂM TRA</span><p>${esc(a.check)}</p></div>`+
+    `<div class="flow"><span class="step">NHẬN TỪ</span>${from.map(x=>`<span class="to">${esc(x)}</span>`).join("")}</div>`+
+    `<div class="flow"><span class="step">CHUYỂN CHO</span>${to.map(x=>`<span class="to">${esc(x)}</span>`).join("")}</div>`+
+    `<dl class="kv"><dt>Workflow n8n</dt><dd>${esc(a.wf)}</dd><dt>Tag</dt><dd>ba-office</dd></dl>`+
+    (live.length?`<ul class="list">${live.map(t=>{const d=dossById(t.doss);return`<li class="col"><div class="grow"><div class="t1">${esc(d.title)}</div><div class="t2">${esc(d.id)}${t.rev?` · lần ${t.rev}`:""}${t.note?" · "+esc(t.note):""}</div>${t.instr?`<div class="instr">Chỉ thị của bạn: ${t.instr.map(esc).join(" · ")}</div>`:""}</div>${actions(t,true)}</li>`}).join("")}</ul>`:`<p class="empty" style="margin:0">Không có hồ sơ nào đang ở bước này.</p>`)+
+    ``;
+}
+
+/* ================= flow actions ================= */
+function startDossier(type,data){
+  const d=mkDoss(type==="cr"
+    ?{id:`CR-${pad(nextCr++)}`,type:"cr",route:["orch","impact"],title:CR_TITLES[Math.floor(Math.random()*CR_TITLES.length)],source:"Mô phỏng",input:"Yêu cầu mẫu do nút Mô phỏng tạo."}
+    :{id:`REQ-${pad(nextReq++)}`,title:NEW_TITLES[Math.floor(Math.random()*NEW_TITLES.length)],source:"Mô phỏng",input:"Yêu cầu mẫu do nút Mô phỏng tạo."});
+  if(data)Object.assign(d,data);
+  dossiers.push(d);add(d.id,"orch","running",Date.now());return d;
+}
+function approve(t){
+  const d=dossById(t.doss);t.status="success";t.at=Date.now();
+  if(t.agent==="impact"&&d.route.length===2){ // Khoa's output names the earliest affected step
+    const re=Math.random()<.5?"brd":"story";d.route=["orch","impact",...FLOW_NEW.slice(FLOW_NEW.indexOf(re))];
+    d.notes.filter(n=>!n.applied&&!d.route.includes(n.agent)).forEach(n=>{n.applied=true;n.note="Bước không nằm trong phạm vi CR";});
+  }
+  const next=d.route[d.route.indexOf(t.agent)+1];
+  if(next)add(d.id,next,"running",Date.now()+1);
+}
+function revise(t){
+  t.status="returned";t.note=t.note&&t.note.startsWith("Bạn")?t.note:"Bạn yêu cầu sửa";
+  add(t.doss,t.agent,"running",Date.now(),{rev:(t.rev||1)+1});
+}
+function sendBack(t){
+  const p=prevStep(t);if(!p)return;
+  t.status="returned";t.note=`Trả về ${byId[p].name}`;
+  add(t.doss,p,"running",Date.now(),{rev:tasks.filter(x=>x.doss===t.doss&&x.agent===p).length+1});
+}
+
+/* Direct task for an agent. Rules:
+   - one-off task (no dossier): agent runs it, stops at your gate, then archive
+   - dossier not yet at that step: instruction is held and applied when the step starts
+   - dossier currently at that step: the step restarts with the instruction
+   - step already approved (or dossier closed): the step reopens; every later step re-runs and waits for you again */
+function assignPlan(agent,dId){
+  const a=byId[agent];
+  if(dId==="adhoc")return{ok:true,kind:"adhoc",msg:`${a.name} làm việc này như một việc lẻ, xong sẽ dừng chờ bạn duyệt rồi vào Lưu trữ.`};
+  const d=dossById(dId);if(!d)return{ok:false,msg:"Chọn một hồ sơ."};
+  if(d.type==="adhoc"&&d.route[0]!==agent)return{ok:false,msg:`${d.id} là việc lẻ của ${byId[d.route[0]].name}. Chọn "Việc lẻ mới" để giao cho ${a.name}.`};
+  if(agent==="impact"&&d.type!=="cr")return{ok:false,msg:`Khoa chỉ làm trên change request. Chọn "Việc lẻ mới" hoặc gửi một change request.`};
+  if(d.type==="new"&&agent==="impact")return{ok:false,msg:""};
+  const order=d.type==="cr"?["orch","impact",...FLOW_NEW]:d.type==="adhoc"?d.route:FLOW_NEW;
+  if(d.type==="cr"&&d.route.length===2&&FLOW_NEW.includes(agent)&&agent!=="orch")
+    return{ok:true,kind:"hold",msg:`Khoa chưa chốt bước quay lại cho ${d.id}. Chỉ thị được giữ và áp dụng nếu flow đi qua ${a.name}.`};
+  const route=order.filter(s=>d.route.includes(s)||s===agent);
+  const added=!d.route.includes(agent);
+  const ts=dTasks(d), cur=ts[ts.length-1], st=dState(d);
+  const ai=route.indexOf(agent), ci=route.indexOf(cur.agent);
+  const pre=added?`Bước ${a.name} đang bị bỏ qua trong ${d.id}, giao việc sẽ thêm lại bước này. `:"";
+  if(st!=="done"&&ai>ci)return{ok:true,kind:"hold",route,msg:pre+`${d.id} chưa tới bước ${a.name}. Chỉ thị được giữ lại và áp dụng khi tới bước này.`};
+  if(st!=="done"&&ai===ci&&cur.status!=="success")return{ok:true,kind:"now",route,msg:pre+`${a.name} đang giữ ${d.id}. Bước này chạy lại ngay với chỉ thị của bạn, rồi dừng chờ bạn duyệt.`};
+  const later=route.slice(ai+1).map(s=>byId[s].name);
+  return{ok:true,kind:"reopen",route,msg:pre+`${a.name} đã xong bước này${st==="done"?" và hồ sơ đã chốt":""}. Giao việc sẽ mở lại bước của ${a.name}${later.length?`; các bước sau (${later.join(", ")}) sẽ chạy lại, mỗi bước chờ bạn duyệt`:""}.`};
+}
+function assign(agent,dId,text){
+  const p=assignPlan(agent,dId);if(!p.ok)return p.msg;
+  const now=Date.now(), a=byId[agent];
+  if(p.kind==="adhoc"){
+    const d=mkDoss({id:`TASK-${pad(nextTask++)}`,type:"adhoc",route:[agent],title:text.length>60?text.slice(0,57)+"…":text,input:text,source:"Bạn giao trực tiếp"});
+    dossiers.push(d);add(d.id,agent,"running",now);return`Đã giao ${d.id} cho ${a.name}.`;
+  }
+  const d=dossById(dId);
+  if(p.route)d.route=p.route;
+  d.notes.push({agent,text,at:now,applied:false});
+  if(p.kind==="hold")return`Đã ghi chỉ thị cho ${a.name} trong ${d.id}.`;
+  const ts=dTasks(d), cur=ts[ts.length-1];
+  if(p.kind==="now"){cur.status="returned";cur.note="Có chỉ thị mới của bạn";}
+  else{
+    if(cur.status!=="success"){cur.status="retried";cur.note=`Dừng vì mở lại bước ${a.name}`;}
+    d.route.slice(d.route.indexOf(agent)+1).forEach(s=>d.resetAt[s]=nextId);
+  }
+  add(d.id,agent,"running",now,{rev:tasks.filter(x=>x.doss===d.id&&x.agent===agent).length+1});
+  return`${a.name} đang làm lại ${d.id} với chỉ thị của bạn.`;
+}
+function tick(){
+  for(const t of tasks.filter(t=>t.status==="running")){
+    if(Date.now()-t.at<2600)continue;
+    if(Math.random()<.9)t.status="waiting"; else{t.status="error";t.note="Node gọi LLM hết thời gian chờ";}
+  }
+  const active=dossiers.filter(d=>dState(d)!=="done").length;
+  if(simTimer&&active<6&&agentStatus("orch")==="idle"&&Math.random()<.25)startDossier(Math.random()<.25?"cr":"new");
+  render();
+}
+
+/* ================= input forms ================= */
+const $=id=>document.getElementById(id);
+$("reqSteps").innerHTML=FLOW_NEW.slice(1).map(s=>`<label class="ck"><input type="checkbox" id="step-${s}" value="${s}" checked> <span>${esc(byId[s].name)} · ${esc(byId[s].task)}</span></label>`).join("");
+function fillSelects(){
+  const keep=(el,html)=>{const v=el.value;el.innerHTML=html;if([...el.options].some(o=>o.value===v))el.value=v;};
+  keep($("reqParent"),dossiers.filter(d=>d.type==="new").map(d=>`<option value="${d.id}">${d.id} · ${esc(d.title)}</option>`).join("")||`<option value="">(chưa có hồ sơ yêu cầu mới)</option>`);
+  keep($("tDoss"),`<option value="adhoc">Việc lẻ mới (không thuộc hồ sơ)</option>`+[...dossiers].reverse().map(d=>`<option value="${d.id}">${d.id} · ${esc(d.title)}${dState(d)==="done"?" (đã chốt)":""}</option>`).join(""));
+  syncAssign();
+}
+/* the assign form lives in each agent's drawer; drafts are kept per agent */
+let assignFor=null; const drafts={};
+function syncAssign(){
+  if(assignFor!==selected){
+    if(assignFor)drafts[assignFor]=$("tText").value;
+    const a=byId[selected];
+    $("dAssignTitle").textContent=`Giao việc cho ${a.name} · ${a.task}`;
+    $("tText").value=drafts[selected]||"";$("tMsg").textContent="";
+    const here=dossiers.filter(d=>{const x=dTasks(d);const l=x[x.length-1];return l&&l.agent===selected&&dState(d)!=="done";}).pop();
+    $("tDoss").value=here?here.id:"adhoc";
+    assignFor=selected;
+  }
+  updateHint();
+}
+function updateHint(){
+  const p=assignPlan(selected,$("tDoss").value);
+  $("tHint").textContent=p.msg;$("tHint").classList.toggle("bad",!p.ok);
+  $("tSubmit").disabled=!p.ok;
+}
+$("reqType").addEventListener("change",e=>{const cr=e.target.value==="cr";$("parentWrap").hidden=!cr;$("stepsWrap").hidden=cr;});
+$("tText").addEventListener("input",e=>{drafts[selected]=e.target.value;});
+$("tDoss").addEventListener("change",updateHint);
+$("reqFile").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(f.size>200000){$("fileNote").textContent="File lớn hơn 200 KB, hãy dán phần cần thiết vào ô nội dung.";return;}
+  const r=new FileReader();r.onload=()=>{const b=$("reqBody");b.value=(b.value?b.value+"\n\n":"")+r.result;$("fileNote").textContent=`Đã nhập ${f.name}`;if(!$("reqTitle").value)$("reqTitle").value=f.name.replace(/\.(txt|md)$/i,"");};
+  r.onerror=()=>{$("fileNote").textContent="Không đọc được file này. Hãy dán nội dung vào ô bên trên.";};
+  r.readAsText(f);e.target.value="";
+});
+$("f-req").addEventListener("submit",e=>{
+  e.preventDefault();
+  const title=$("reqTitle").value.trim(), body=$("reqBody").value.trim(), type=$("reqType").value;
+  if(!title||!body){$("reqMsg").textContent="Cần có tiêu đề và nội dung đầu vào.";return;}
+  let d;
+  if(type==="cr"){
+    const parent=$("reqParent").value;
+    d=startDossier("cr",{title,input:body,source:$("reqSource").value.trim(),parent:parent||undefined});
+  }else{
+    const route=["orch",...FLOW_NEW.slice(1).filter(s=>$("step-"+s).checked)];
+    d=startDossier("new",{title,input:body,source:$("reqSource").value.trim(),route});
+  }
+  $("f-req").reset();$("parentWrap").hidden=true;$("stepsWrap").hidden=false;$("fileNote").textContent="";
+  $("reqMsg").textContent=`Đã gửi ${d.id} cho Quân. Hồ sơ sẽ dừng ở cổng 1 chờ bạn duyệt.`;
+  selected="orch";render();
+});
+$("dAssign").addEventListener("submit",e=>{
+  e.preventDefault();
+  const text=$("tText").value.trim();
+  if(!text){$("tMsg").textContent="Nhập chỉ thị cho agent.";return;}
+  const msg=assign(selected,$("tDoss").value,text);
+  $("tText").value="";drafts[selected]="";render();$("tMsg").textContent=msg;
+});
+let resetArm=null;
+$("resetData").addEventListener("click",e=>{
+  const b=e.currentTarget;
+  if(!resetArm){b.textContent="Bấm lần nữa để xoá";resetArm=setTimeout(()=>{resetArm=null;b.textContent="Xoá dữ liệu thử";},3000);return;}
+  clearTimeout(resetArm);resetArm=null;b.textContent="Xoá dữ liệu thử";
+  try{localStorage.removeItem(KEY);}catch(err){}
+  seed();filter="all";selected="orch";render();
+});
+
+document.addEventListener("click",e=>{
+  const get=k=>{const el=e.target.closest(`[data-${k}]`);return el?tasks.find(t=>t.id===+el.dataset[k]):null;};
+  let t;
+  if((t=get("approve"))){approve(t);render();return;}
+  if((t=get("revise"))){revise(t);render();return;}
+  if((t=get("back"))){sendBack(t);render();return;}
+  if((t=get("retry"))){t.status="retried";t.note=(t.note||"")+" · đã chạy lại";add(t.doss,t.agent,"running",Date.now(),{rev:t.rev});render();return;}
+  const aa=e.target.closest("[data-assign-agent]"), ad=e.target.closest("[data-assign-doss]");
+  if(aa||ad){
+    if(aa){selected=aa.dataset.assignAgent;render();}
+    if(ad){
+      const d=dossById(ad.dataset.assignDoss), ts=dTasks(d), cur=ts[ts.length-1];
+      if(d.type==="adhoc")selected=d.route[0];else if(cur&&dState(d)!=="done")selected=cur.agent;
+      render();$("tDoss").value=d.id;updateHint();
+    }
+    $("dAssign").scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"start"});$("tText").focus({preventScroll:true});return;
+  }
+  const chip=e.target.closest("[data-f]");
+  if(chip){filter=chip.dataset.f;if(filter!=="all")selected=filter;render();return;}
+  const rm=e.target.closest("[data-id]");
+  if(rm){selected=rm.dataset.id;render();}
+});
+document.getElementById("simBtn").addEventListener("click",e=>{
+  if(simTimer){clearInterval(simTimer);simTimer=null;e.currentTarget.textContent="▶ Mô phỏng";}
+  else{simTimer=setInterval(tick,1800);tick();e.currentTarget.textContent="⏸ Dừng mô phỏng";}
+});
+setInterval(()=>{if(!simTimer&&tasks.some(t=>t.status==="running"&&Date.now()-t.at>=2600))tick();},1500); // agents finish even when the simulation is off
+document.getElementById("resetBtn").addEventListener("click",()=>G.reset&&G.reset());
+document.getElementById("spinBtn").addEventListener("click",e=>{
+  const on=e.currentTarget.getAttribute("aria-pressed")!=="true";
+  e.currentTarget.setAttribute("aria-pressed",on);G.spin&&G.spin(on);
+});
+initScene();
+render();
+</script>
+
+
+
+</body>
+</html>
