@@ -29,9 +29,19 @@ Tại mỗi cổng: **Duyệt** (sang bước sau) · **Yêu cầu sửa** (agen
 
 ## Cách dùng
 
-**Gửi yêu cầu** (khu đầu trang): tiêu đề, loại, nguồn, nội dung thô (dán hoặc nhập file `.txt`/`.md`), chọn các bước cần chạy.
+**Gửi việc** (khu đầu trang): tiêu đề, agent bắt đầu, nguồn, nội dung hoặc tài liệu cần xử lý (dán hoặc nhập file `.txt`/`.md`).
 
-**Giao việc cho agent** (trong khung của từng agent):
+| Giao cho | Phạm vi | Kết quả |
+|---|---|---|
+| Quân | Yêu cầu mới | Chạy đủ quy trình; bỏ tick được bước không cần |
+| Quân | Change request | Quân → Khoa → quay lại bước bị ảnh hưởng |
+| Khoa | Change request | Bỏ qua Quân, Khoa phân tích rồi quay lại bước bị ảnh hưởng |
+| Bất kỳ agent khác | Chỉ agent này | Agent đó xử lý một mình, chờ duyệt rồi vào Lưu trữ |
+| Bất kỳ agent khác | Chạy tiếp các bước sau | Bắt đầu từ agent đó, chạy tiếp các bước được tick |
+
+Mọi trường hợp đều dừng ở cổng duyệt sau mỗi bước.
+
+**Giao thêm việc cho hồ sơ đang chạy** (trong khung của từng agent):
 
 | Hồ sơ đang ở đâu | Kết quả |
 |---|---|

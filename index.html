@@ -165,6 +165,8 @@ li.col .acts{justify-content:flex-start}
 .row.end .note{flex:1;min-width:180px}
 fieldset{border:1px solid var(--line);border-radius:12px;padding:10px 12px 12px;margin:0;min-width:0}
 legend{font-size:12.5px;font-weight:600;color:var(--muted);padding:0 4px}
+.scope{border:1px solid var(--line);border-radius:10px;padding:6px 10px 8px;flex-direction:row;flex-wrap:wrap;gap:4px 14px}
+.scope legend{padding:0 4px}
 .cks{display:flex;flex-wrap:wrap;gap:6px 16px}
 .ck{display:flex;gap:7px;align-items:center;font-size:13px;cursor:pointer}
 .ck input{accent-color:var(--lamp);width:16px;height:16px}
@@ -196,18 +198,20 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
 
   <section class="inbox" id="inbox" aria-labelledby="inboxTitle">
     <div class="ibhead">
-      <h2 id="inboxTitle">Gửi yêu cầu</h2>
-      <span class="note">Mỗi yêu cầu bắt đầu ở Quân. Muốn giao thêm việc cho một agent, chọn phòng của agent đó.</span>
+      <h2 id="inboxTitle">Gửi việc</h2>
+      <span class="note">Bắt đầu ở Quân để chạy đủ quy trình, hoặc giao thẳng cho agent cần xử lý. Việc thêm cho hồ sơ đang chạy thì giao tại phòng của agent.</span>
     </div>
     <form id="f-req" class="form" novalidate>
       <label class="fld">Tiêu đề<input id="reqTitle" maxlength="120" autocomplete="off" placeholder="VD: Khoá thẻ tạm thời trên app"></label>
-      <label class="fld">Loại<select id="reqType"><option value="new">Yêu cầu mới</option><option value="cr">Change request</option></select></label>
+      <label class="fld">Giao cho<select id="reqStart"></select></label>
+      <label class="fld" id="typeWrap">Loại<select id="reqType"><option value="new">Yêu cầu mới</option><option value="cr">Change request</option></select></label>
+      <fieldset class="fld scope" id="scopeWrap" hidden><legend>Phạm vi</legend><label class="ck"><input type="radio" name="scope" id="scopeOnly" value="only" checked> <span>Chỉ agent này</span></label><label class="ck"><input type="radio" name="scope" id="scopeCont" value="continue"> <span>Chạy tiếp các bước sau</span></label></fieldset>
       <label class="fld" id="parentWrap" hidden>Thay đổi cho hồ sơ<select id="reqParent"></select></label>
       <label class="fld">Nguồn<input id="reqSource" maxlength="160" autocomplete="off" placeholder="VD: Họp với PO 06/11, email team Thẻ"></label>
-      <label class="fld full">Nội dung đầu vào<textarea id="reqBody" rows="6" placeholder="Dán ghi chú họp, email, mô tả yêu cầu hoặc nhập từ file…"></textarea></label>
+      <label class="fld full">Nội dung / tài liệu cần xử lý<textarea id="reqBody" rows="6" placeholder="Dán ghi chú họp, email, tài liệu cần sửa, hoặc nhập từ file…"></textarea></label>
       <div class="full row"><label class="btn filebtn" for="reqFile">⇪ Nhập từ file .txt / .md</label><input type="file" id="reqFile" accept=".txt,.md,text/plain,text/markdown" class="sr"><span class="note" id="fileNote" aria-live="polite"></span></div>
-      <fieldset class="full" id="stepsWrap"><legend>Bước cần chạy sau Quân <span class="note">· bỏ tick bước không cần, Quân xác nhận lại ở cổng 1</span></legend><div class="cks" id="reqSteps"></div></fieldset>
-      <div class="full row end"><span class="note" id="reqMsg" aria-live="polite"></span><button class="btn primary" type="submit">Gửi vào flow</button></div>
+      <fieldset class="full" id="stepsWrap"><legend id="stepsLegend"></legend><div class="cks" id="reqSteps"></div></fieldset>
+      <div class="full row end"><span class="note" id="reqMsg" aria-live="polite"></span><button class="btn primary" id="reqSubmit" type="submit">Gửi</button></div>
     </form>
     <div class="ibfoot"><span class="note">Bản thử: hồ sơ lưu trong trình duyệt này, agent trả kết quả mẫu. Khi nối n8n, nút Gửi sẽ chạy workflow BA-01 thật.</span><button class="btn ghost" id="resetData" type="button">Xoá toàn bộ hồ sơ</button></div>
   </section>
@@ -310,7 +314,7 @@ function seed(){ // empty office: no requirements yet
 }
 const KEY="ba-office-v6"; // new key: start empty instead of loading earlier sample data
 function save(){try{localStorage.setItem(KEY,JSON.stringify({dossiers,tasks,nextId,nextReq,nextCr,nextTask}));}catch(e){}}
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.dossiers)&&Array.isArray(s.tasks)){({dossiers,tasks,nextId,nextReq,nextCr,nextTask}=s);return true;}}catch(e){}return false;}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.dossiers)&&Array.isArray(s.tasks)){({dossiers,tasks,nextId,nextReq,nextCr,nextTask}=s);dossiers.forEach(d=>{if(d.type==="cr"&&d.crExtended===undefined)d.crExtended=d.route.length>2;});return true;}}catch(e){}return false;}
 
 let filter="all", selected="orch", simTimer=null;
 const STATUS_VI={idle:"Rảnh",running:"Đang chạy",waiting:"Chờ duyệt",success:"Đã duyệt",error:"Lỗi",returned:"Trả sửa",retried:"Đã chạy lại",done:"Đã chốt"};
@@ -325,7 +329,7 @@ const dTasks=d=>tasks.filter(t=>t.doss===d.id).sort((a,b)=>a.at-b.at||a.id-b.id)
 function dState(d){
   const ts=dTasks(d), last=ts[ts.length-1];
   if(!last)return"running";
-  if(last.status==="success"&&last.agent===d.route[d.route.length-1]&&!(d.type==="cr"&&d.route.length===2))return"done";
+  if(last.status==="success"&&last.agent===d.route[d.route.length-1]&&!(d.type==="cr"&&!d.crExtended))return"done";
   if(last.status==="success")return"running";
   return last.status;
 }
@@ -346,7 +350,7 @@ function agentStatus(id){
 const doneCount=()=>dossiers.filter(d=>dState(d)==="done").length;
 const fmt=ms=>new Date(ms).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const skipped=d=>d.type==="new"?FLOW_NEW.filter(s=>!d.route.includes(s)):[];
+const skipped=d=>d.type==="new"?FLOW_NEW.slice(FLOW_NEW.indexOf(d.route[0])).filter(s=>!d.route.includes(s)):[];
 if(!load())seed();
 
 /* ================= 3D office ================= */
@@ -580,7 +584,7 @@ function taskRow(t){
   const a=byId[t.agent], d=dossById(t.doss);
   return`<li><span class="av" style="background:${a.color}">${a.short}</span><div class="grow"><div class="t1" title="${esc(d.title)}">${esc(d.title)}</div><div class="t2">${esc(d.id)} · ${esc(a.name)} · ${esc(a.task)}${t.rev?` (lần ${t.rev})`:""} · ${fmt(t.at)}${t.instr?" · có chỉ thị của bạn":""}${t.note?" · "+esc(t.note):""}</div></div>${actions(t,false)}</li>`;
 }
-function routeSteps(d){return d.type==="new"?FLOW_NEW:d.type==="cr"?["orch","impact",...d.route.slice(2)]:d.route;}
+function routeSteps(d){return d.type==="new"?FLOW_NEW.slice(FLOW_NEW.indexOf(d.route[0])):d.route;}
 function tracker(d){
   return`<div class="steps" aria-label="Tiến trình ${esc(d.id)}">`+routeSteps(d).map((s,i)=>{
     const a=byId[s], st=stepState(d,s);
@@ -589,13 +593,13 @@ function tracker(d){
     return`${i?`<span class="link${st==="success"?" on":""}" style="--c:${a.color}"></span>`:""}<span class="st ${cls}" style="--c:${a.color}" title="${esc(tip)}">${a.short}</span>`;
   }).join("")+`</div>`;
 }
-const TYPE_VI={new:"Yêu cầu mới",cr:"Change request",adhoc:"Việc lẻ"};
+const TYPE_VI={new:"Yêu cầu mới",cr:"Change request",adhoc:"Giao thẳng"};
 function dossRow(d){
   const ts=dTasks(d), last=ts[ts.length-1], st=dState(d);
   const where=st==="done"?"Đã vào Lưu trữ":`${byId[last.agent].name} · ${byId[last.agent].task}`;
   const sk=skipped(d);
   const notes=d.notes.length?`<ul class="notes">${d.notes.map(n=>`<li><b>${esc(byId[n.agent].name)}:</b> ${esc(n.text)} <span class="pill ${n.note?"s-idle":n.applied?"s-success":"s-waiting"}">${n.note?esc(n.note):n.applied?"Đã áp dụng":"Chờ tới bước"}</span></li>`).join("")}</ul>`:"";
-  return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">Đã chốt</span>`:actions(last,false)}</div>`+
+  return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""}${d.type==="new"&&d.route[0]!=="orch"?` · bắt đầu từ ${esc(byId[d.route[0]].name)}`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">Đã chốt</span>`:actions(last,false)}</div>`+
   `<details class="dmore"><summary>Đầu vào${d.notes.length?" & chỉ thị":""}</summary>${d.source?`<p class="t2" style="white-space:normal">Nguồn: ${esc(d.source)}</p>`:""}<pre class="input">${esc(d.input||"(trống)")}</pre>${notes}<button class="revise" type="button" data-assign-doss="${esc(d.id)}">＋ Giao việc trong hồ sơ này</button></details></div>`;
 }
 function render(){
@@ -659,16 +663,17 @@ function renderDrawer(){
 
 /* ================= flow actions ================= */
 function startDossier(type,data){
-  const d=mkDoss(type==="cr"
-    ?{id:`CR-${pad(nextCr++)}`,type:"cr",route:["orch","impact"],title:CR_TITLES[Math.floor(Math.random()*CR_TITLES.length)],source:"Mô phỏng",input:"Yêu cầu mẫu do nút Mô phỏng tạo."}
-    :{id:`REQ-${pad(nextReq++)}`,title:NEW_TITLES[Math.floor(Math.random()*NEW_TITLES.length)],source:"Mô phỏng",input:"Yêu cầu mẫu do nút Mô phỏng tạo."});
+  const sim={source:"Mô phỏng",input:"Yêu cầu mẫu do nút Mô phỏng tạo."}, pick=a=>a[Math.floor(Math.random()*a.length)];
+  const d=type==="cr"?mkDoss({...sim,id:`CR-${pad(nextCr++)}`,type:"cr",route:["orch","impact"],crExtended:false,title:pick(CR_TITLES)})
+    :type==="adhoc"?mkDoss({...sim,id:`TASK-${pad(nextTask++)}`,type:"adhoc",title:"Việc giao thẳng"})
+    :mkDoss({...sim,id:`REQ-${pad(nextReq++)}`,title:pick(NEW_TITLES)});
   if(data)Object.assign(d,data);
-  dossiers.push(d);add(d.id,"orch","running",Date.now());return d;
+  dossiers.push(d);add(d.id,d.route[0],"running",Date.now());return d;
 }
 function approve(t){
   const d=dossById(t.doss);t.status="success";t.at=Date.now();
-  if(t.agent==="impact"&&d.route.length===2){ // Khoa's output names the earliest affected step
-    const re=Math.random()<.5?"brd":"story";d.route=["orch","impact",...FLOW_NEW.slice(FLOW_NEW.indexOf(re))];
+  if(t.agent==="impact"&&d.type==="cr"&&!d.crExtended){ // Khoa's output names the earliest affected step
+    const re=Math.random()<.5?"brd":"story";d.route=[...d.route.slice(0,d.route.indexOf("impact")+1),...FLOW_NEW.slice(FLOW_NEW.indexOf(re))];d.crExtended=true;
     d.notes.filter(n=>!n.applied&&!d.route.includes(n.agent)).forEach(n=>{n.applied=true;n.note="Bước không nằm trong phạm vi CR";});
   }
   const next=d.route[d.route.indexOf(t.agent)+1];
@@ -697,7 +702,7 @@ function assignPlan(agent,dId){
   if(agent==="impact"&&d.type!=="cr")return{ok:false,msg:`Khoa chỉ làm trên change request. Chọn "Việc lẻ mới" hoặc gửi một change request.`};
   if(d.type==="new"&&agent==="impact")return{ok:false,msg:""};
   const order=d.type==="cr"?["orch","impact",...FLOW_NEW]:d.type==="adhoc"?d.route:FLOW_NEW;
-  if(d.type==="cr"&&d.route.length===2&&FLOW_NEW.includes(agent)&&agent!=="orch")
+  if(d.type==="cr"&&!d.crExtended&&FLOW_NEW.includes(agent)&&agent!=="orch")
     return{ok:true,kind:"hold",msg:`Khoa chưa chốt bước quay lại cho ${d.id}. Chỉ thị được giữ và áp dụng nếu flow đi qua ${a.name}.`};
   const route=order.filter(s=>d.route.includes(s)||s===agent);
   const added=!d.route.includes(agent);
@@ -741,7 +746,27 @@ function tick(){
 
 /* ================= input forms ================= */
 const $=id=>document.getElementById(id);
-$("reqSteps").innerHTML=FLOW_NEW.slice(1).map(s=>`<label class="ck"><input type="checkbox" id="step-${s}" value="${s}" checked> <span>${esc(byId[s].name)} · ${esc(byId[s].task)}</span></label>`).join("");
+$("reqStart").innerHTML=[...FLOW_NEW,"impact"].map(id=>{const a=byId[id];return`<option value="${id}">${esc(a.name)} · ${esc(a.task)}${id==="orch"?" (đủ quy trình)":id==="impact"?" (change request)":""}</option>`;}).join("");
+const stepChecks={}; // remembers ticks while the form is open
+function updForm(){
+  const st=$("reqStart").value, type=$("reqType").value, scope=$("scopeCont").checked?"continue":"only";
+  $("typeWrap").hidden=st!=="orch";
+  $("scopeWrap").hidden=st==="orch"||st==="impact";
+  $("parentWrap").hidden=!((st==="orch"&&type==="cr")||st==="impact");
+  const after=FLOW_NEW.includes(st)?FLOW_NEW.slice(FLOW_NEW.indexOf(st)+1):[];
+  const show=after.length&&((st==="orch"&&type==="new")||(st!=="orch"&&scope==="continue"));
+  $("stepsWrap").hidden=!show;
+  if(show){
+    $("stepsLegend").innerHTML=`Các bước chạy sau ${esc(byId[st].name)} <span class="note">· bỏ tick bước không cần; mỗi bước vẫn dừng chờ bạn duyệt</span>`;
+    $("reqSteps").innerHTML=after.map(s=>`<label class="ck"><input type="checkbox" id="step-${s}" value="${s}" ${stepChecks[s]===false?"":"checked"}> <span>${esc(byId[s].name)} · ${esc(byId[s].task)}</span></label>`).join("");
+  }
+  $("scopeCont").disabled=st==="review";
+  if(st==="review")$("scopeOnly").checked=true;
+  $("reqSubmit").textContent=`Gửi cho ${byId[st].name}`;
+}
+$("reqSteps").addEventListener("change",e=>{if(e.target.type==="checkbox")stepChecks[e.target.value]=e.target.checked;});
+["reqStart","reqType","scopeOnly","scopeCont"].forEach(id=>$(id).addEventListener("change",updForm));
+updForm();
 function fillSelects(){
   const keep=(el,html)=>{const v=el.value;el.innerHTML=html;if([...el.options].some(o=>o.value===v))el.value=v;};
   keep($("reqParent"),dossiers.filter(d=>d.type==="new").map(d=>`<option value="${d.id}">${d.id} · ${esc(d.title)}</option>`).join("")||`<option value="">(chưa có hồ sơ yêu cầu mới)</option>`);
@@ -767,7 +792,6 @@ function updateHint(){
   $("tHint").textContent=p.msg;$("tHint").classList.toggle("bad",!p.ok);
   $("tSubmit").disabled=!p.ok;
 }
-$("reqType").addEventListener("change",e=>{const cr=e.target.value==="cr";$("parentWrap").hidden=!cr;$("stepsWrap").hidden=cr;});
 $("tText").addEventListener("input",e=>{drafts[selected]=e.target.value;});
 $("tDoss").addEventListener("change",updateHint);
 $("reqFile").addEventListener("change",e=>{
@@ -779,19 +803,20 @@ $("reqFile").addEventListener("change",e=>{
 });
 $("f-req").addEventListener("submit",e=>{
   e.preventDefault();
-  const title=$("reqTitle").value.trim(), body=$("reqBody").value.trim(), type=$("reqType").value;
-  if(!title||!body){$("reqMsg").textContent="Cần có tiêu đề và nội dung đầu vào.";return;}
-  let d;
-  if(type==="cr"){
-    const parent=$("reqParent").value;
-    d=startDossier("cr",{title,input:body,source:$("reqSource").value.trim(),parent:parent||undefined});
-  }else{
-    const route=["orch",...FLOW_NEW.slice(1).filter(s=>$("step-"+s).checked)];
-    d=startDossier("new",{title,input:body,source:$("reqSource").value.trim(),route});
-  }
-  $("f-req").reset();$("parentWrap").hidden=true;$("stepsWrap").hidden=false;$("fileNote").textContent="";
-  $("reqMsg").textContent=`Đã gửi ${d.id} cho Quân. Hồ sơ sẽ dừng ở cổng 1 chờ bạn duyệt.`;
-  selected="orch";render();
+  const title=$("reqTitle").value.trim(), body=$("reqBody").value.trim();
+  if(!title||!body){$("reqMsg").textContent="Cần có tiêu đề và nội dung.";return;}
+  const st=$("reqStart").value, type=$("reqType").value, scope=$("scopeCont").checked?"continue":"only";
+  const base={title,input:body,source:$("reqSource").value.trim()};
+  const ticked=s=>!$("stepsWrap").hidden&&$("step-"+s)&&$("step-"+s).checked;
+  const after=FLOW_NEW.includes(st)?FLOW_NEW.slice(FLOW_NEW.indexOf(st)+1):[];
+  let d,how;
+  if(st==="orch"&&type==="cr"){d=startDossier("cr",{...base,route:["orch","impact"],parent:$("reqParent").value||undefined});how="Hồ sơ dừng chờ bạn duyệt sau mỗi bước.";}
+  else if(st==="impact"){d=startDossier("cr",{...base,route:["impact"],parent:$("reqParent").value||undefined});how="Khoa phân tích xong sẽ chờ bạn duyệt, rồi flow quay lại bước bị ảnh hưởng.";}
+  else if(st!=="orch"&&scope==="only"){d=startDossier("adhoc",{...base,route:[st]});how=`Chỉ ${byId[st].name} xử lý, xong dừng chờ bạn duyệt rồi vào Lưu trữ.`;}
+  else{d=startDossier("new",{...base,route:[st,...after.filter(ticked)]});how="Hồ sơ dừng chờ bạn duyệt sau mỗi bước.";}
+  $("f-req").reset();$("fileNote").textContent="";Object.keys(stepChecks).forEach(k=>delete stepChecks[k]);updForm();
+  $("reqMsg").textContent=`Đã gửi ${d.id} cho ${byId[d.route[0]].name}. ${how}`;
+  selected=d.route[0];render();
 });
 $("dAssign").addEventListener("submit",e=>{
   e.preventDefault();
