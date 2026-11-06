@@ -209,7 +209,7 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
     <form id="f-req" class="form" novalidate>
       <label class="fld">Tiêu đề<input id="reqTitle" maxlength="120" autocomplete="off" placeholder="VD: Khoá thẻ tạm thời trên app"></label>
       <label class="fld">Giao cho<select id="reqStart"></select></label>
-      <label class="fld" id="typeWrap">Loại<select id="reqType"><option value="new">Yêu cầu mới</option><option value="cr">Change request</option></select></label>
+      <label class="fld" id="typeWrap">Loại<select id="reqType"><option value="new">Requirement</option><option value="cr">Change Request</option></select></label>
       <fieldset class="fld scope" id="scopeWrap" hidden><legend>Phạm vi</legend><label class="ck"><input type="radio" name="scope" id="scopeOnly" value="only" checked> <span>Chỉ agent này</span></label><label class="ck"><input type="radio" name="scope" id="scopeCont" value="continue"> <span>Chạy tiếp các bước sau</span></label></fieldset>
       <label class="fld" id="parentWrap" hidden>Thay đổi cho hồ sơ<select id="reqParent"></select></label>
       <label class="fld">Nguồn<input id="reqSource" maxlength="160" autocomplete="off" placeholder="VD: Họp với PO 06/11, email team Thẻ"></label>
@@ -598,7 +598,7 @@ function tracker(d){
     return`${i?`<span class="link${st==="success"?" on":""}" style="--c:${a.color}"></span>`:""}<span class="st ${cls}" style="--c:${a.color}" title="${esc(tip)}">${a.short}</span>`;
   }).join("")+`</div>`;
 }
-const TYPE_VI={new:"Yêu cầu mới",cr:"Change request",adhoc:"Giao thẳng"};
+const TYPE_VI={new:"Requirement",cr:"Change Request",adhoc:"Giao thẳng"};
 function dossRow(d){
   const ts=dTasks(d), last=ts[ts.length-1], st=dState(d);
   const where=st==="done"?"Đã vào Lưu trữ":`${byId[last.agent].name} · ${byId[last.agent].task}`;
