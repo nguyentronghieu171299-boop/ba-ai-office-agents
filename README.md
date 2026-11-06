@@ -61,10 +61,10 @@ Change Request bắt buộc gắn với một Requirement đã có: khi chọn C
 
 | n8n | Văn phòng |
 |---|---|
-| `running` | Đang chạy |
-| `waiting` | Chờ bạn duyệt |
-| `success` | Đã duyệt / Lưu trữ |
-| `error`, `crashed` | Lỗi |
+| `running` | Running |
+| `waiting` | Awaiting Approval |
+| `success` | Approved (hồ sơ xong cả flow: Closed) |
+| `error`, `crashed` | Error |
 
 - Việc còn lại: nối connector n8n (MCP) để trang đọc execution thật và để nút Gửi / Duyệt gọi workflow thật.
 

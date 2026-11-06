@@ -237,11 +237,11 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
         <div class="hint">Kéo để xoay · cuộn hoặc chụm để zoom</div>
       </div>
       <div class="legend">
-        <span><i class="dot" style="background:var(--idle)"></i>Rảnh</span>
-        <span><i class="dot" style="background:var(--run)"></i>Đang chạy</span>
-        <span><i class="dot" style="background:var(--wait)"></i>Chờ bạn duyệt</span>
-        <span><i class="dot" style="background:var(--ok)"></i>Hoàn thành</span>
-        <span><i class="dot" style="background:var(--err)"></i>Lỗi</span>
+        <span><i class="dot" style="background:var(--idle)"></i>Idle</span>
+        <span><i class="dot" style="background:var(--run)"></i>Running</span>
+        <span><i class="dot" style="background:var(--wait)"></i>Awaiting Approval</span>
+        <span><i class="dot" style="background:var(--ok)"></i>Approved</span>
+        <span><i class="dot" style="background:var(--err)"></i>Error</span>
       </div>
     </div>
     <aside class="drawer" id="drawer">
@@ -271,10 +271,10 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
     <div class="tbl"><table>
       <thead><tr><th>Trạng thái n8n</th><th>Hiển thị</th><th>Ý nghĩa với BA</th></tr></thead>
       <tbody>
-        <tr><td><code>running</code></td><td><span class="pill s-running">Đang chạy</span></td><td>Agent đang xử lý, màn hình sáng xanh, nhân vật gõ phím</td></tr>
-        <tr><td><code>waiting</code></td><td><span class="pill s-waiting">Chờ duyệt</span></td><td>Workflow dừng ở cổng duyệt. Bạn chọn Duyệt (sang bước sau), Yêu cầu sửa (agent làm lại) hoặc Trả về bước trước</td></tr>
-        <tr><td><code>success</code></td><td><span class="pill s-success">Hoàn thành</span></td><td>Output vào Lưu trữ</td></tr>
-        <tr><td><code>error</code> / <code>crashed</code></td><td><span class="pill s-error">Lỗi</span></td><td>Mở execution trong n8n để xem node lỗi</td></tr>
+        <tr><td><code>running</code></td><td><span class="pill s-running">Running</span></td><td>Agent đang xử lý, màn hình sáng xanh, nhân vật gõ phím</td></tr>
+        <tr><td><code>waiting</code></td><td><span class="pill s-waiting">Awaiting Approval</span></td><td>Workflow dừng ở cổng duyệt. Bạn chọn Duyệt (sang bước sau), Yêu cầu sửa (agent làm lại) hoặc Trả về bước trước</td></tr>
+        <tr><td><code>success</code></td><td><span class="pill s-success">Approved</span></td><td>Output vào Lưu trữ</td></tr>
+        <tr><td><code>error</code> / <code>crashed</code></td><td><span class="pill s-error">Error</span></td><td>Mở execution trong n8n để xem node lỗi</td></tr>
       </tbody>
     </table></div>
   </section>
@@ -323,7 +323,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify({dossiers,tasks,next
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.dossiers)&&Array.isArray(s.tasks)){({dossiers,tasks,nextId,nextReq,nextCr,nextTask}=s);dossiers.forEach(d=>{if(d.type==="cr"&&d.crExtended===undefined)d.crExtended=d.route.length>2;});return true;}}catch(e){}return false;}
 
 let filter="all", selected="orch", simTimer=null;
-const STATUS_VI={idle:"Rảnh",running:"Đang chạy",waiting:"Chờ duyệt",success:"Đã duyệt",error:"Lỗi",returned:"Trả sửa",retried:"Đã chạy lại",done:"Đã chốt"};
+const STATUS_VI={idle:"Idle",running:"Running",waiting:"Awaiting Approval",success:"Approved",error:"Error",returned:"Returned",retried:"Retried",done:"Closed"};
 const SC={idle:"var(--idle)",running:"var(--run)",waiting:"var(--wait)",success:"var(--ok)",error:"var(--err)",returned:"var(--lamp)",done:"var(--ok)"};
 const HEX={idle:0x6c729e,running:0x4cc4ff,waiting:0xb98cff,success:0x43d39a,error:0xff6b7c};
 const reduceMotion=matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -595,7 +595,7 @@ function tracker(d){
   return`<div class="steps" aria-label="Tiến trình ${esc(d.id)}">`+routeSteps(d).map((s,i)=>{
     const a=byId[s], st=stepState(d,s);
     const cls={success:"done",running:"cur run",waiting:"cur wait",error:"cur err",returned:"cur",retried:"cur",skip:"skip",todo:""}[st]||"";
-    const tip=`${a.name} · ${a.task}: ${st==="skip"?"Bỏ qua":st==="todo"?"Chưa tới":STATUS_VI[st]}`;
+    const tip=`${a.name} · ${a.task}: ${st==="skip"?"Skipped":st==="todo"?"Not Started":STATUS_VI[st]}`;
     return`${i?`<span class="link${st==="success"?" on":""}" style="--c:${a.color}"></span>`:""}<span class="st ${cls}" style="--c:${a.color}" title="${esc(tip)}">${a.short}</span>`;
   }).join("")+`</div>`;
 }
@@ -605,7 +605,7 @@ function dossRow(d){
   const where=st==="done"?"Đã vào Lưu trữ":`${byId[last.agent].name} · ${byId[last.agent].task}`;
   const sk=skipped(d);
   const notes=d.notes.length?`<ul class="notes">${d.notes.map(n=>`<li><b>${esc(byId[n.agent].name)}:</b> ${esc(n.text)} <span class="pill ${n.note?"s-idle":n.applied?"s-success":"s-waiting"}">${n.note?esc(n.note):n.applied?"Đã áp dụng":"Chờ tới bước"}</span></li>`).join("")}</ul>`:"";
-  return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""}${d.type==="new"&&d.route[0]!=="orch"?` · bắt đầu từ ${esc(byId[d.route[0]].name)}`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">Đã chốt</span>`:actions(last,false)}</div>`+
+  return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""}${d.type==="new"&&d.route[0]!=="orch"?` · bắt đầu từ ${esc(byId[d.route[0]].name)}`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">${STATUS_VI.done}</span>`:actions(last,false)}</div>`+
   `<details class="dmore"><summary>Đầu vào${d.notes.length?" & chỉ thị":""}</summary>${d.source?`<p class="t2" style="white-space:normal">Nguồn: ${esc(d.source)}</p>`:""}${d.files&&d.files.length?`<p class="t2" style="white-space:normal">Tệp: ${d.files.map(f=>`${esc(f.name)} (${esc(f.kind)}${f.sheets?`, ${f.sheets} sheet`:""}${f.cut?", đã cắt bớt":""})`).join(" · ")}</p>`:""}<pre class="input">${esc(d.input||"(trống)")}</pre>${notes}<button class="revise" type="button" data-assign-doss="${esc(d.id)}">＋ Giao việc trong hồ sơ này</button></details></div>`;
 }
 function render(){
@@ -640,7 +640,7 @@ function render(){
     return`<div class="bar"><span class="t1" style="font-weight:500">${esc(a.name)}</span><span class="trk"><i style="width:${v??0}%;background:${a.color}"></i></span><b>${v===null?"–":v+"%"}</b></div>`}).join("");
 
   document.getElementById("todayCount").textContent=`${dossiers.length} hồ sơ`;
-  const segs=[["done","Đã chốt"],["running","Đang chạy"],["waiting","Chờ duyệt"],["error","Lỗi"]];
+  const segs=["done","running","waiting","error"].map(k=>[k,STATUS_VI[k]]);
   const cnt=k=>live.filter(s=>s===k).length;
   let acc=0;const R=46,C=2*Math.PI*R,total=dossiers.length;
   const arcs=segs.map(([k])=>{const n=cnt(k);if(!n||!total)return"";const len=n/total*C;const s=`<circle r="${R}" cx="60" cy="60" fill="none" stroke="${SC[k]}" stroke-width="13" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 60 60)"/>`;acc+=len;return s}).join("");
