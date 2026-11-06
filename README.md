@@ -43,6 +43,8 @@ Mọi trường hợp đều dừng ở cổng duyệt sau mỗi bước.
 
 Change Request bắt buộc gắn với một Requirement đã có: khi chọn Change Request (hoặc giao cho Khoa), trang liệt kê các Requirement để chọn Requirement gốc. Chưa có Requirement nào thì chưa tạo được Change Request.
 
+**Tab Requirements** (đầu trang, mở thẳng bằng `#requirements`): bảng quản lý mọi Requirement, mỗi Change Request nằm ngay dưới Requirement gốc. Lọc theo loại, trạng thái, tìm theo mã, tiêu đề, nguồn. Chạm một dòng để xem đầu vào, tệp, chỉ thị, tiến trình, lịch sử từng bước; thao tác: xem trong văn phòng, tạo Change Request, sửa tiêu đề/nguồn, xoá (Requirement còn CR thì không xoá được).
+
 **Giao thêm việc cho hồ sơ đang chạy** (trong khung của từng agent):
 
 | Hồ sơ đang ở đâu | Kết quả |

@@ -190,6 +190,48 @@ legend{font-size:12.5px;font-weight:600;color:var(--muted);padding:0 4px}
 pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--f-body);font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:180px;overflow:auto;width:100%}
 .notes{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .instr{font-size:12px;color:var(--lamp);margin-top:2px}
+.views{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;width:max-content;max-width:100%;overflow-x:auto}
+.views button{border:0;background:none;padding:7px 16px;border-radius:9px;font-size:14px;font-weight:700;color:var(--muted);white-space:nowrap;display:inline-flex;gap:8px;align-items:center}
+.views button[aria-selected="true"]{background:var(--lamp);color:#20160a}
+.views .cnt{font-family:var(--f-mono);font-size:11.5px;padding:0 7px;border-radius:99px;background:color-mix(in srgb,currentColor 14%,transparent)}
+#view-office{display:flex;flex-direction:column;gap:18px}
+#view-office[hidden]{display:none!important}
+.rq{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.rqhead{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-start}
+.rqhead h2{margin:0;font-size:18px;font-weight:800}
+.rqhead p{margin:2px 0 0}
+.rqstats{display:flex;flex-wrap:wrap;gap:10px}
+.rqstat{padding:8px 14px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;flex-direction:column}
+.rqstat b{font-family:var(--f-mono);font-size:18px;color:var(--fg)}
+.rqfilters{display:flex;flex-wrap:wrap;gap:10px}
+.rqfilters .fld{flex:1 1 150px}
+.rqfilters .grow2{flex:2 1 220px}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table.rqt{min-width:820px;font-size:13px}
+.rqt th{position:sticky;top:0;background:var(--panel-2)}
+.rqt tbody tr.r{cursor:pointer}
+.rqt tbody tr.r:hover td{background:color-mix(in srgb,var(--lamp) 5%,transparent)}
+.rqt tbody tr.r.open td{background:color-mix(in srgb,var(--lamp) 8%,transparent)}
+.rqt td{vertical-align:middle}
+.rqt .id{font-family:var(--f-mono);font-size:12px;white-space:nowrap}
+.rqt tr.cr .id{padding-left:26px;position:relative}
+.rqt tr.cr .id::before{content:"↳";position:absolute;left:10px;color:var(--muted)}
+.rqt .ttl{font-weight:600;max-width:320px}
+.rqt .muted{color:var(--muted);font-size:12px}
+.prog{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.prog .trk{width:70px;height:6px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.prog .trk i{display:block;height:100%;background:var(--ok)}
+.rqt tr.detail>td{background:var(--bg);padding:14px 16px}
+.dgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.dgrid{grid-template-columns:minmax(0,1fr)}}
+.dgrid h4{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dsec{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px;max-height:220px;overflow:auto}
+.hist li{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hist time{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.dacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.btn.danger{border-color:color-mix(in srgb,var(--err) 50%,transparent);color:var(--err)}
+.editf{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;align-items:end}
 </style>
 </head>
 <body>
@@ -201,6 +243,30 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
     </div>
     <div class="kpis" id="kpis"></div>
   </header>
+
+  <nav class="views" role="tablist" aria-label="Chế độ xem">
+    <button type="button" role="tab" id="vt-office" data-view="office" aria-selected="true">Văn phòng</button>
+    <button type="button" role="tab" id="vt-reqs" data-view="requirements" aria-selected="false">Requirements <span class="cnt" id="vtCount"></span></button>
+  </nav>
+
+  <section id="view-reqs" class="rq" hidden aria-labelledby="rqTitle">
+    <div class="rqhead">
+      <div><h2 id="rqTitle">Requirements & Change Requests</h2><p class="note">Mỗi Change Request nằm ngay dưới Requirement gốc. Chạm vào một dòng để xem chi tiết, lịch sử và thao tác.</p></div>
+      <button class="btn primary" type="button" data-goto-form="new">＋ Requirement mới</button>
+    </div>
+    <div class="rqstats" id="rqStats"></div>
+    <div class="rqfilters">
+      <label class="fld grow2">Tìm<input id="rqSearch" type="search" autocomplete="off" placeholder="Mã, tiêu đề hoặc nguồn"></label>
+      <label class="fld">Loại<select id="rqType"><option value="all">Tất cả</option><option value="new">Requirement</option><option value="cr">Change Request</option></select></label>
+      <label class="fld">Trạng thái<select id="rqStatus"><option value="all">Tất cả</option><option value="open">Đang mở</option><option value="waiting">Awaiting Approval</option><option value="running">Running</option><option value="error">Error</option><option value="done">Closed</option></select></label>
+    </div>
+    <div class="tblwrap"><table class="rqt">
+      <thead><tr><th>Mã</th><th>Tiêu đề</th><th>Loại</th><th>Trạng thái</th><th>Bước hiện tại</th><th>Tiến độ</th><th>CR</th><th>Tạo lúc</th></tr></thead>
+      <tbody id="rqBody"></tbody>
+    </table></div>
+  </section>
+
+  <div id="view-office">
 
   <section class="inbox" id="inbox" aria-labelledby="inboxTitle">
     <div class="ibhead">
@@ -278,6 +344,7 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
       </tbody>
     </table></div>
   </section>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -512,7 +579,7 @@ function initScene(){
     if(hits.length){selected=hits[0].object.userData.id;render();}
   });
 
-  function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<600?50:38;camera.updateProjectionMatrix();}
+  function resize(){const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<600?50:38;camera.updateProjectionMatrix();}
   new ResizeObserver(resize).observe(host);resize();
 
   G.ok=true;
@@ -550,6 +617,7 @@ function initScene(){
   const v=new THREE.Vector3(), clock=new THREE.Clock();
   (function loop(){
     requestAnimationFrame(loop);
+    if(!host.offsetParent)return;
     const t=clock.getElapsedTime();
     controls.update();
     for(const a of AGENTS){
@@ -648,6 +716,7 @@ function render(){
 
   renderDrawer();
   fillSelects();
+  renderReqs();
   save();
 }
 function renderDrawer(){
@@ -972,8 +1041,120 @@ document.getElementById("spinBtn").addEventListener("click",e=>{
   const on=e.currentTarget.getAttribute("aria-pressed")!=="true";
   e.currentTarget.setAttribute("aria-pressed",on);G.spin&&G.spin(on);
 });
+/* ================= Requirements tab ================= */
+let view="office", rqOpen=null, rqEdit=null, rqDel=null;
+const fmtDT=ms=>new Date(ms).toLocaleString("vi-VN",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const crsOf=id=>dossiers.filter(d=>d.type==="cr"&&d.parent===id);
+function progress(d){const steps=routeSteps(d).filter(s=>stepState(d,s)!=="skip");const ok=steps.filter(s=>stepState(d,s)==="success").length;return[ok,steps.length];}
+function rqMatch(d){
+  const q=$("rqSearch").value.trim().toLowerCase(), ty=$("rqType").value, st=$("rqStatus").value, ds=dState(d);
+  if(ty!=="all"&&d.type!==ty)return false;
+  if(st==="open"&&ds==="done")return false;
+  if(st!=="all"&&st!=="open"&&ds!==st)return false;
+  if(q&&![d.id,d.title,d.source||""].some(x=>x.toLowerCase().includes(q)))return false;
+  return true;
+}
+function rqRow(d){
+  const ds=dState(d), ts=dTasks(d), l=ts[ts.length-1], [ok,n]=progress(d), crs=d.type==="new"?crsOf(d.id).length:"";
+  const cur=ds==="done"?`<span class="muted">—</span>`:`${esc(byId[l.agent].name)} <span class="muted">· ${esc(byId[l.agent].task)}</span>`;
+  return`<tr class="r ${d.type}${rqOpen===d.id?" open":""}" data-rq="${esc(d.id)}" tabindex="0" aria-expanded="${rqOpen===d.id}">
+    <td class="id">${esc(d.id)}</td><td class="ttl">${esc(d.title)}${d.type==="cr"?`<div class="muted">đổi cho ${esc(d.parent||"?")}</div>`:""}</td>
+    <td><span class="tag ${d.type}">${TYPE_VI[d.type]}</span></td>
+    <td><span class="pill s-${ds==="done"?"success":ds}">${STATUS_VI[ds]}</span></td>
+    <td>${cur}</td>
+    <td><span class="prog"><span class="trk"><i style="width:${n?ok/n*100:0}%"></i></span>${ok}/${n}</span></td>
+    <td class="id">${crs}</td><td class="muted">${fmtDT(d.created||ts[0]?.at||Date.now())}</td></tr>`+(rqOpen===d.id?rqDetail(d):"");
+}
+function rqDetail(d){
+  const ts=dTasks(d), ds=dState(d), crs=d.type==="new"?crsOf(d.id):[];
+  const hist=[...ts].reverse().map(t=>`<li><time>${fmtDT(t.at)}</time><b>${esc(byId[t.agent].name)}</b><span class="muted">${esc(byId[t.agent].task)}${t.rev?` · lần ${t.rev}`:""}</span><span class="pill s-${t.status}">${STATUS_VI[t.status]}</span>${t.note?`<span class="muted">${esc(t.note)}</span>`:""}</li>`).join("");
+  const edit=rqEdit===d.id?`<form class="editf" data-editf="${esc(d.id)}"><label class="fld">Tiêu đề<input id="edTitle" maxlength="120" value="${esc(d.title)}"></label><label class="fld">Nguồn<input id="edSource" maxlength="160" value="${esc(d.source||"")}"></label><div class="dacts"><button class="btn primary" type="submit">Lưu</button><button class="btn" type="button" data-rq-cancel>Huỷ</button></div></form>`:"";
+  const delBlock=crs.length?`<span class="muted">Không xoá được: còn ${crs.length} Change Request gắn với Requirement này.</span>`:`<button class="btn danger" type="button" data-rq-del="${esc(d.id)}">${rqDel===d.id?"Bấm lần nữa để xoá vĩnh viễn":"Xoá"}</button>`;
+  return`<tr class="detail"><td colspan="8"><div class="dgrid">
+    <div class="dsec">
+      ${edit}
+      <h4>Đầu vào</h4>
+      ${d.source?`<div class="muted">Nguồn: ${esc(d.source)}</div>`:""}
+      ${d.files&&d.files.length?`<div class="muted">Tệp: ${d.files.map(f=>`${esc(f.name)} (${esc(f.kind)})`).join(" · ")}</div>`:""}
+      <pre class="input">${esc(d.input||"(trống)")}</pre>
+      ${d.notes.length?`<h4>Chỉ thị</h4><ul class="notes">${d.notes.map(n=>`<li><b>${esc(byId[n.agent].name)}:</b> ${esc(n.text)}</li>`).join("")}</ul>`:""}
+      ${crs.length?`<h4>Change Request</h4><ul class="notes">${crs.map(c=>`<li><b>${esc(c.id)}</b> ${esc(c.title)} · ${STATUS_VI[dState(c)]}</li>`).join("")}</ul>`:""}
+    </div>
+    <div class="dsec">
+      <h4>Tiến trình</h4>${tracker(d)}
+      <h4>Lịch sử</h4><ul class="hist">${hist||"<li class='muted'>Chưa có</li>"}</ul>
+      <div class="dacts">
+        <button class="btn" type="button" data-rq-view="${esc(d.id)}">Xem trong văn phòng</button>
+        ${d.type==="new"?`<button class="btn" type="button" data-goto-form="cr" data-parent="${esc(d.id)}">＋ Tạo Change Request</button>`:""}
+        ${rqEdit===d.id?"":`<button class="btn" type="button" data-rq-edit="${esc(d.id)}">Sửa</button>`}
+        ${delBlock}
+      </div>
+    </div></div></td></tr>`;
+}
+function renderReqs(){
+  const list=dossiers.filter(d=>d.type==="new"||d.type==="cr");
+  const reqs=list.filter(d=>d.type==="new"), crs=list.filter(d=>d.type==="cr");
+  $("vtCount").textContent=list.length||"";
+  if(view!=="requirements"||rqEdit)return; // keep an open edit form intact
+  const open=a=>a.filter(d=>dState(d)!=="done").length;
+  $("rqStats").innerHTML=[["Requirement",reqs.length],["Requirement đang mở",open(reqs)],["Change Request",crs.length],["CR đang mở",open(crs)],["Chờ bạn duyệt",list.filter(d=>dState(d)==="waiting").length]]
+    .map(([k,v])=>`<div class="rqstat">${k}<b>${v}</b></div>`).join("");
+  const rows=[];
+  [...reqs].reverse().forEach(r=>{
+    const kids=crsOf(r.id).reverse().filter(rqMatch), self=rqMatch(r);
+    if(self||kids.length){rows.push(rqRow(r));kids.forEach(c=>rows.push(rqRow(c)));}
+  });
+  crs.filter(c=>!reqs.some(r=>r.id===c.parent)&&rqMatch(c)).forEach(c=>rows.push(rqRow(c))); // orphaned CRs (parent deleted earlier)
+  $("rqBody").innerHTML=rows.join("")||`<tr><td colspan="8" class="empty">${list.length?"Không có mục nào khớp bộ lọc.":"Chưa có Requirement nào. Bấm “＋ Requirement mới” để tạo."}</td></tr>`;
+}
+function setView(v,push=true){
+  view=v==="requirements"?"requirements":"office";
+  $("vt-office").setAttribute("aria-selected",view==="office");$("vt-reqs").setAttribute("aria-selected",view==="requirements");
+  $("view-office").hidden=view!=="office";$("view-reqs").hidden=view!=="requirements";
+  if(push){try{history.replaceState(null,"","#"+view);}catch(e){location.hash=view;}}
+  render();
+}
+["rqSearch","rqType","rqStatus"].forEach(id=>$(id).addEventListener(id==="rqSearch"?"input":"change",renderReqs));
+$("rqBody").addEventListener("keydown",e=>{const r=e.target.closest("tr.r");if(r&&(e.key==="Enter"||e.key===" ")){e.preventDefault();r.click();}});
+$("rqBody").addEventListener("submit",e=>{
+  const f=e.target.closest("[data-editf]");if(!f)return;e.preventDefault();
+  const d=dossById(f.dataset.editf), t=$("edTitle").value.trim();
+  if(!t){$("edTitle").focus();return;}
+  d.title=t;d.source=$("edSource").value.trim();rqEdit=null;render();
+});
+document.addEventListener("click",e=>{
+  const v=e.target.closest("[data-view]");if(v){setView(v.dataset.view);return;}
+  const g=e.target.closest("[data-goto-form]");
+  if(g){
+    setView("office");
+    $("reqStart").value="orch";$("reqType").value=g.dataset.gotoForm==="cr"?"cr":"new";updForm();fillSelects();
+    if(g.dataset.parent)$("reqParent").value=g.dataset.parent;
+    $("inbox").scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"start"});$("reqTitle").focus({preventScroll:true});return;
+  }
+  if(!e.target.closest("#rqBody"))return;
+  const ed=e.target.closest("[data-rq-edit]");if(ed){startEdit(ed.dataset.rqEdit);return;}
+  if(e.target.closest("[data-rq-cancel]")){rqEdit=null;renderReqs();return;}
+  const del=e.target.closest("[data-rq-del]");
+  if(del){
+    const id=del.dataset.rqDel;
+    if(rqDel!==id){rqDel=id;renderReqs();setTimeout(()=>{if(rqDel===id){rqDel=null;renderReqs();}},4000);return;}
+    dossiers=dossiers.filter(d=>d.id!==id);tasks=tasks.filter(t=>t.doss!==id);rqDel=null;rqOpen=null;render();return;
+  }
+  const vw=e.target.closest("[data-rq-view]");
+  if(vw){const d=dossById(vw.dataset.rqView),ts=dTasks(d),l=ts[ts.length-1];selected=dState(d)==="done"||!l?"orch":l.agent;filter="all";setView("office");$("scene").scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"center"});return;}
+  if(e.target.closest("tr.detail"))return;
+  const r=e.target.closest("tr.r");if(r){rqOpen=rqOpen===r.dataset.rq?null:r.dataset.rq;rqDel=null;renderReqs();}
+});
+function startEdit(id){ // open the row normally, then swap its detail for the edit form
+  rqOpen=id;rqEdit=null;renderReqs();rqEdit=id;
+  const row=$("rqBody").querySelector(`tr.r[data-rq="${CSS.escape(id)}"]`);
+  if(row&&row.nextElementSibling&&row.nextElementSibling.classList.contains("detail"))row.nextElementSibling.outerHTML=rqDetail(dossById(id));
+  const t=$("edTitle");if(t)t.focus();
+}
+window.addEventListener("hashchange",()=>setView(location.hash.slice(1)||"office",false));
 initScene();
 render();
+setView(location.hash.slice(1)||"office",false);
 </script>
 
 
