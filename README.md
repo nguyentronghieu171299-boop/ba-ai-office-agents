@@ -29,7 +29,7 @@ Tại mỗi cổng: **Duyệt** (sang bước sau) · **Yêu cầu sửa** (agen
 
 ## Cách dùng
 
-**Gửi việc** (khu đầu trang): tiêu đề, agent bắt đầu, nguồn, nội dung hoặc tài liệu cần xử lý (dán hoặc nhập file `.txt`/`.md`).
+**Gửi việc** (khu đầu trang): tiêu đề, agent bắt đầu, nguồn, nội dung hoặc tài liệu cần xử lý: dán trực tiếp, hoặc tải / kéo thả file Word (`.docx`), Excel (`.xlsx`, `.xls`), `.csv`, `.txt`, `.md` (tối đa 10 MB/tệp, chọn nhiều tệp được). Nội dung file được chuyển thành văn bản, giữ heading, danh sách và bảng; mỗi sheet Excel thành một bảng.
 
 | Giao cho | Phạm vi | Kết quả |
 |---|---|---|

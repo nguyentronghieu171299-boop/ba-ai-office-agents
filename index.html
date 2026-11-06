@@ -172,6 +172,11 @@ legend{font-size:12.5px;font-weight:600;color:var(--muted);padding:0 4px}
 .ck input{accent-color:var(--lamp);width:16px;height:16px}
 .sr{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .filebtn{cursor:pointer}
+.dropzone{display:flex;flex-direction:column;gap:8px;border:1.5px dashed transparent;border-radius:12px;padding:2px;transition:border-color .15s,background .15s;min-width:0}
+.dropzone.over{border-color:var(--lamp);background:color-mix(in srgb,var(--lamp) 7%,transparent)}
+.fchips{display:flex;flex-wrap:wrap;gap:6px}
+.fchips:empty{display:none}
+.fchip{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);overflow-wrap:anywhere}
 #reqFile:focus-visible+.note,.filebtn:focus-within{outline:2px solid var(--lamp)}
 .hintbox{margin:0;font-size:13px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--run) 9%,transparent);border:1px solid color-mix(in srgb,var(--run) 35%,transparent)}
 .hintbox.bad{background:color-mix(in srgb,var(--err) 9%,transparent);border-color:color-mix(in srgb,var(--err) 40%,transparent)}
@@ -208,8 +213,8 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
       <fieldset class="fld scope" id="scopeWrap" hidden><legend>Phạm vi</legend><label class="ck"><input type="radio" name="scope" id="scopeOnly" value="only" checked> <span>Chỉ agent này</span></label><label class="ck"><input type="radio" name="scope" id="scopeCont" value="continue"> <span>Chạy tiếp các bước sau</span></label></fieldset>
       <label class="fld" id="parentWrap" hidden>Thay đổi cho hồ sơ<select id="reqParent"></select></label>
       <label class="fld">Nguồn<input id="reqSource" maxlength="160" autocomplete="off" placeholder="VD: Họp với PO 06/11, email team Thẻ"></label>
-      <label class="fld full">Nội dung / tài liệu cần xử lý<textarea id="reqBody" rows="6" placeholder="Dán ghi chú họp, email, tài liệu cần sửa, hoặc nhập từ file…"></textarea></label>
-      <div class="full row"><label class="btn filebtn" for="reqFile">⇪ Nhập từ file .txt / .md</label><input type="file" id="reqFile" accept=".txt,.md,text/plain,text/markdown" class="sr"><span class="note" id="fileNote" aria-live="polite"></span></div>
+      <div class="full dropzone" id="dropZone"><label class="fld">Nội dung / tài liệu cần xử lý<textarea id="reqBody" rows="6" placeholder="Dán ghi chú họp, email, tài liệu cần sửa, hoặc nhập từ file…"></textarea></label>
+      <div class="row"><label class="btn filebtn" for="reqFile">⇪ Tải file Word / Excel</label><input type="file" id="reqFile" multiple accept=".docx,.xlsx,.xls,.xlsm,.csv,.txt,.md" class="sr"><span class="note">hoặc kéo thả file vào đây · .docx, .xlsx, .xls, .csv, .txt, .md · tối đa 10 MB/tệp</span></div><div class="fchips" id="fileList"></div><span class="note" id="fileNote" aria-live="polite"></span></div>
       <fieldset class="full" id="stepsWrap"><legend id="stepsLegend"></legend><div class="cks" id="reqSteps"></div></fieldset>
       <div class="full row end"><span class="note" id="reqMsg" aria-live="polite"></span><button class="btn primary" id="reqSubmit" type="submit">Gửi</button></div>
     </form>
@@ -600,7 +605,7 @@ function dossRow(d){
   const sk=skipped(d);
   const notes=d.notes.length?`<ul class="notes">${d.notes.map(n=>`<li><b>${esc(byId[n.agent].name)}:</b> ${esc(n.text)} <span class="pill ${n.note?"s-idle":n.applied?"s-success":"s-waiting"}">${n.note?esc(n.note):n.applied?"Đã áp dụng":"Chờ tới bước"}</span></li>`).join("")}</ul>`:"";
   return`<div class="drow"><div class="dmeta"><div class="t1">${esc(d.title)}</div><div class="t2"><span class="tag ${d.type}">${TYPE_VI[d.type]}</span> ${esc(d.id)}${d.parent?` (đổi cho ${esc(d.parent)})`:""}${d.type==="new"&&d.route[0]!=="orch"?` · bắt đầu từ ${esc(byId[d.route[0]].name)}`:""} · ${esc(where)}${sk.length?" · bỏ qua "+sk.map(s=>byId[s].name).join(", "):""}${d.notes.length?` · ${d.notes.length} chỉ thị`:""}</div></div>${tracker(d)}<div class="dact">${st==="done"?`<span class="pill s-success">Đã chốt</span>`:actions(last,false)}</div>`+
-  `<details class="dmore"><summary>Đầu vào${d.notes.length?" & chỉ thị":""}</summary>${d.source?`<p class="t2" style="white-space:normal">Nguồn: ${esc(d.source)}</p>`:""}<pre class="input">${esc(d.input||"(trống)")}</pre>${notes}<button class="revise" type="button" data-assign-doss="${esc(d.id)}">＋ Giao việc trong hồ sơ này</button></details></div>`;
+  `<details class="dmore"><summary>Đầu vào${d.notes.length?" & chỉ thị":""}</summary>${d.source?`<p class="t2" style="white-space:normal">Nguồn: ${esc(d.source)}</p>`:""}${d.files&&d.files.length?`<p class="t2" style="white-space:normal">Tệp: ${d.files.map(f=>`${esc(f.name)} (${esc(f.kind)}${f.sheets?`, ${f.sheets} sheet`:""}${f.cut?", đã cắt bớt":""})`).join(" · ")}</p>`:""}<pre class="input">${esc(d.input||"(trống)")}</pre>${notes}<button class="revise" type="button" data-assign-doss="${esc(d.id)}">＋ Giao việc trong hồ sơ này</button></details></div>`;
 }
 function render(){
   if(G.ok)G.update();
@@ -794,19 +799,105 @@ function updateHint(){
 }
 $("tText").addEventListener("input",e=>{drafts[selected]=e.target.value;});
 $("tDoss").addEventListener("change",updateHint);
-$("reqFile").addEventListener("change",e=>{
-  const f=e.target.files[0];if(!f)return;
-  if(f.size>200000){$("fileNote").textContent="File lớn hơn 200 KB, hãy dán phần cần thiết vào ô nội dung.";return;}
-  const r=new FileReader();r.onload=()=>{const b=$("reqBody");b.value=(b.value?b.value+"\n\n":"")+r.result;$("fileNote").textContent=`Đã nhập ${f.name}`;if(!$("reqTitle").value)$("reqTitle").value=f.name.replace(/\.(txt|md)$/i,"");};
-  r.onerror=()=>{$("fileNote").textContent="Không đọc được file này. Hãy dán nội dung vào ô bên trên.";};
-  r.readAsText(f);e.target.value="";
-});
+/* ---- file import: Word, Excel, CSV, text → plain text in the content box ---- */
+const LIBS={ // primary + fallback CDN for each reader
+  xlsx:[["https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js","https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"],"XLSX"],
+  mammoth:[["https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js","https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"],"mammoth"]
+};
+const libWait={};
+const addScript=src=>new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
+function loadLib(k){
+  const [srcs,g]=LIBS[k];
+  if(window[g])return Promise.resolve(window[g]);
+  return libWait[k]||(libWait[k]=(async()=>{
+    for(const src of srcs){try{await addScript(src);if(window[g])return window[g];}catch(e){}}
+    libWait[k]=null;throw new Error("Không tải được thư viện đọc file. Kiểm tra kết nối mạng rồi thử lại.");
+  })());
+}
+const readAs=(f,how)=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(new Error("Không đọc được file."));r[how](f);});
+const clean=t=>String(t??"").replace(/\s+/g," ").trim();
+function htmlToText(html){ // keeps headings, lists and tables readable for the agents
+  const doc=new DOMParser().parseFromString(html,"text/html"), out=[];
+  const walk=el=>{
+    for(const n of el.children){
+      const tag=n.tagName.toLowerCase();
+      if(/^h[1-6]$/.test(tag))out.push("#".repeat(+tag[1])+" "+clean(n.textContent));
+      else if(tag==="ul"||tag==="ol")[...n.children].forEach((li,i)=>out.push((tag==="ol"?`${i+1}.`:"-")+" "+clean(li.textContent)));
+      else if(tag==="table"){
+        [...n.querySelectorAll("tr")].forEach((tr,i)=>{
+          const cells=[...tr.children].map(td=>clean(td.textContent).replace(/\|/g,"/"));
+          out.push("| "+cells.join(" | ")+" |");
+          if(i===0)out.push("|"+cells.map(()=>"---").join("|")+"|");
+        });
+        out.push("");
+      }
+      else if(n.children.length&&tag!=="p")walk(n);
+      else{const t=clean(n.textContent);if(t)out.push(t);}
+    }
+  };
+  walk(doc.body);
+  return out.join("\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+const MAX_ROWS=2000, MAX_CHARS=150000;
+async function importFile(f){
+  const ext=(f.name.split(".").pop()||"").toLowerCase();
+  if(f.size>10*1024*1024)throw new Error(`${f.name} lớn hơn 10 MB. Hãy tách nhỏ hoặc chỉ giữ phần cần xử lý.`);
+  if(ext==="doc")throw new Error(`${f.name} là định dạng Word cũ (.doc). Mở bằng Word, lưu lại dạng .docx rồi tải lên.`);
+  if(["txt","md","csv"].includes(ext))return{text:await readAs(f,"readAsText"),kind:ext==="csv"?"CSV":"Văn bản"};
+  if(ext==="docx"){
+    const m=await loadLib("mammoth");
+    const r=await m.convertToHtml({arrayBuffer:await readAs(f,"readAsArrayBuffer")});
+    return{text:htmlToText(r.value),kind:"Word"};
+  }
+  if(["xlsx","xlsm","xls"].includes(ext)){
+    const X=await loadLib("xlsx");
+    const wb=X.read(await readAs(f,"readAsArrayBuffer"),{type:"array"});
+    const parts=wb.SheetNames.map(name=>{
+      const rows=X.utils.sheet_to_json(wb.Sheets[name],{header:1,blankrows:false,defval:""});
+      if(!rows.length)return`## Sheet: ${name}\n(trống)`;
+      const w=Math.max(...rows.map(r=>r.length));
+      const line=r=>"| "+Array.from({length:w},(_,i)=>clean(r[i]).replace(/\|/g,"/")).join(" | ")+" |";
+      const body=rows.slice(0,MAX_ROWS).map((r,i)=>i===0?line(r)+"\n|"+Array(w).fill("---").join("|")+"|":line(r)).join("\n");
+      return`## Sheet: ${name}\n${body}${rows.length>MAX_ROWS?`\n(… còn ${rows.length-MAX_ROWS} dòng không đưa vào)`:""}`;
+    });
+    return{text:parts.join("\n\n"),kind:"Excel",sheets:wb.SheetNames.length};
+  }
+  throw new Error(`Chưa đọc được định dạng .${ext}. Hỗ trợ: Word (.docx), Excel (.xlsx, .xls), .csv, .txt, .md.`);
+}
+let attachments=[];
+function showFiles(msg){
+  $("fileList").innerHTML=attachments.map(a=>`<span class="fchip">${esc(a.kind)} · ${esc(a.name)}${a.sheets?` · ${a.sheets} sheet`:""}</span>`).join("");
+  if(msg!==undefined)$("fileNote").textContent=msg;
+}
+async function addFiles(list){
+  const files=[...list];if(!files.length)return;
+  const errs=[];
+  for(const f of files){
+    showFiles(`Đang đọc ${f.name}…`);
+    try{
+      let {text,kind,sheets}=await importFile(f);
+      text=String(text||"").trim();
+      let cut=false;if(text.length>MAX_CHARS){text=text.slice(0,MAX_CHARS);cut=true;}
+      const b=$("reqBody");
+      b.value=(b.value.trim()?b.value.trimEnd()+"\n\n":"")+`===== Tệp: ${f.name} =====\n`+(text||"(file không có nội dung chữ)")+(cut?"\n(… đã cắt bớt vì tệp quá dài)":"");
+      attachments.push({name:f.name,kind,sheets,size:f.size,cut});
+      if(!$("reqTitle").value.trim())$("reqTitle").value=f.name.replace(/\.[^.]+$/,"");
+    }catch(err){errs.push(err.message||`Không đọc được ${f.name}.`);}
+  }
+  showFiles(errs.length?errs.join(" "):`Đã thêm ${files.length-errs.length} tệp vào ô nội dung. Bạn có thể sửa lại trước khi gửi.`);
+}
+$("reqFile").addEventListener("change",e=>{addFiles(e.target.files);e.target.value="";});
+const dz=$("dropZone");
+["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev,e=>{if([...(e.dataTransfer?.types||[])].includes("Files")){e.preventDefault();dz.classList.add("over");}}));
+["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{if(ev==="dragleave"&&dz.contains(e.relatedTarget))return;dz.classList.remove("over");}));
+dz.addEventListener("drop",e=>{if(e.dataTransfer?.files?.length){e.preventDefault();addFiles(e.dataTransfer.files);}});
+
 $("f-req").addEventListener("submit",e=>{
   e.preventDefault();
   const title=$("reqTitle").value.trim(), body=$("reqBody").value.trim();
   if(!title||!body){$("reqMsg").textContent="Cần có tiêu đề và nội dung.";return;}
   const st=$("reqStart").value, type=$("reqType").value, scope=$("scopeCont").checked?"continue":"only";
-  const base={title,input:body,source:$("reqSource").value.trim()};
+  const base={title,input:body,source:$("reqSource").value.trim(),files:attachments.slice()};
   const ticked=s=>!$("stepsWrap").hidden&&$("step-"+s)&&$("step-"+s).checked;
   const after=FLOW_NEW.includes(st)?FLOW_NEW.slice(FLOW_NEW.indexOf(st)+1):[];
   let d,how;
@@ -814,7 +905,7 @@ $("f-req").addEventListener("submit",e=>{
   else if(st==="impact"){d=startDossier("cr",{...base,route:["impact"],parent:$("reqParent").value||undefined});how="Khoa phân tích xong sẽ chờ bạn duyệt, rồi flow quay lại bước bị ảnh hưởng.";}
   else if(st!=="orch"&&scope==="only"){d=startDossier("adhoc",{...base,route:[st]});how=`Chỉ ${byId[st].name} xử lý, xong dừng chờ bạn duyệt rồi vào Lưu trữ.`;}
   else{d=startDossier("new",{...base,route:[st,...after.filter(ticked)]});how="Hồ sơ dừng chờ bạn duyệt sau mỗi bước.";}
-  $("f-req").reset();$("fileNote").textContent="";Object.keys(stepChecks).forEach(k=>delete stepChecks[k]);updForm();
+  $("f-req").reset();attachments=[];showFiles("");Object.keys(stepChecks).forEach(k=>delete stepChecks[k]);updForm();
   $("reqMsg").textContent=`Đã gửi ${d.id} cho ${byId[d.route[0]].name}. ${how}`;
   selected=d.route[0];render();
 });
