@@ -172,6 +172,7 @@ legend{font-size:12.5px;font-weight:600;color:var(--muted);padding:0 4px}
 .ck input{accent-color:var(--lamp);width:16px;height:16px}
 .sr{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .filebtn{cursor:pointer}
+.reqd{color:var(--err)}
 .dropzone{display:flex;flex-direction:column;gap:8px;border:1.5px dashed transparent;border-radius:12px;padding:2px;transition:border-color .15s,background .15s;min-width:0}
 .dropzone.over{border-color:var(--lamp);background:color-mix(in srgb,var(--lamp) 7%,transparent)}
 .fchips{display:flex;flex-wrap:wrap;gap:6px}
@@ -211,7 +212,7 @@ pre.input{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(-
       <label class="fld">Giao cho<select id="reqStart"></select></label>
       <label class="fld" id="typeWrap">Loại<select id="reqType"><option value="new">Requirement</option><option value="cr">Change Request</option></select></label>
       <fieldset class="fld scope" id="scopeWrap" hidden><legend>Phạm vi</legend><label class="ck"><input type="radio" name="scope" id="scopeOnly" value="only" checked> <span>Chỉ agent này</span></label><label class="ck"><input type="radio" name="scope" id="scopeCont" value="continue"> <span>Chạy tiếp các bước sau</span></label></fieldset>
-      <label class="fld" id="parentWrap" hidden>Thay đổi cho hồ sơ<select id="reqParent"></select></label>
+      <label class="fld" id="parentWrap" hidden>Requirement gốc <span class="reqd" aria-hidden="true">*</span><select id="reqParent" aria-required="true"></select></label>
       <label class="fld">Nguồn<input id="reqSource" maxlength="160" autocomplete="off" placeholder="VD: Họp với PO 06/11, email team Thẻ"></label>
       <div class="full dropzone" id="dropZone"><label class="fld">Nội dung / tài liệu cần xử lý<textarea id="reqBody" rows="6" placeholder="Dán ghi chú họp, email, tài liệu cần sửa, hoặc nhập từ file…"></textarea></label>
       <div class="row"><label class="btn filebtn" for="reqFile">⇪ Tải file Word / Excel</label><input type="file" id="reqFile" multiple accept=".docx,.xlsx,.xls,.xlsm,.csv,.txt,.md" class="sr"><span class="note">hoặc kéo thả file vào đây · .docx, .xlsx, .xls, .csv, .txt, .md · tối đa 10 MB/tệp</span></div><div class="fchips" id="fileList"></div><span class="note" id="fileNote" aria-live="polite"></span></div>
@@ -669,7 +670,7 @@ function renderDrawer(){
 /* ================= flow actions ================= */
 function startDossier(type,data){
   const sim={source:"Mô phỏng",input:"Yêu cầu mẫu do nút Mô phỏng tạo."}, pick=a=>a[Math.floor(Math.random()*a.length)];
-  const d=type==="cr"?mkDoss({...sim,id:`CR-${pad(nextCr++)}`,type:"cr",route:["orch","impact"],crExtended:false,title:pick(CR_TITLES)})
+  const d=type==="cr"?mkDoss({...sim,id:`CR-${pad(nextCr++)}`,type:"cr",route:["orch","impact"],crExtended:false,title:pick(CR_TITLES),parent:(pick(dossiers.filter(x=>x.type==="new"))||{}).id})
     :type==="adhoc"?mkDoss({...sim,id:`TASK-${pad(nextTask++)}`,type:"adhoc",title:"Việc giao thẳng"})
     :mkDoss({...sim,id:`REQ-${pad(nextReq++)}`,title:pick(NEW_TITLES)});
   if(data)Object.assign(d,data);
@@ -701,6 +702,7 @@ function sendBack(t){
    - step already approved (or dossier closed): the step reopens; every later step re-runs and waits for you again */
 function assignPlan(agent,dId){
   const a=byId[agent];
+  if(dId==="adhoc"&&agent==="impact")return{ok:false,msg:"Change Request phải gắn với một Requirement. Tạo ở khu Gửi việc: chọn Loại Change Request rồi chọn Requirement gốc."};
   if(dId==="adhoc")return{ok:true,kind:"adhoc",msg:`${a.name} làm việc này như một việc lẻ, xong sẽ dừng chờ bạn duyệt rồi vào Lưu trữ.`};
   const d=dossById(dId);if(!d)return{ok:false,msg:"Chọn một hồ sơ."};
   if(d.type==="adhoc"&&d.route[0]!==agent)return{ok:false,msg:`${d.id} là việc lẻ của ${byId[d.route[0]].name}. Chọn "Việc lẻ mới" để giao cho ${a.name}.`};
@@ -745,14 +747,21 @@ function tick(){
     if(Math.random()<.9)t.status="waiting"; else{t.status="error";t.note="Node gọi LLM hết thời gian chờ";}
   }
   const active=dossiers.filter(d=>dState(d)!=="done").length;
-  if(simTimer&&active<6&&agentStatus("orch")==="idle"&&Math.random()<.25)startDossier(Math.random()<.25?"cr":"new");
+  if(simTimer&&active<6&&agentStatus("orch")==="idle"&&Math.random()<.25)startDossier(Math.random()<.25&&dossiers.some(d=>d.type==="new")?"cr":"new");
   render();
 }
 
 /* ================= input forms ================= */
 const $=id=>document.getElementById(id);
-$("reqStart").innerHTML=[...FLOW_NEW,"impact"].map(id=>{const a=byId[id];return`<option value="${id}">${esc(a.name)} · ${esc(a.task)}${id==="orch"?" (đủ quy trình)":id==="impact"?" (change request)":""}</option>`;}).join("");
+$("reqStart").innerHTML=[...FLOW_NEW,"impact"].map(id=>{const a=byId[id];return`<option value="${id}">${esc(a.name)} · ${esc(a.task)}${id==="orch"?" (đủ quy trình)":id==="impact"?" (Change Request)":""}</option>`;}).join("");
 const stepChecks={}; // remembers ticks while the form is open
+function crGuard(){
+  const none=!dossiers.some(d=>d.type==="new");
+  const crOpt=$("reqType").querySelector('option[value="cr"]'), kOpt=$("reqStart").querySelector('option[value="impact"]');
+  crOpt.disabled=none;crOpt.textContent=none?"Change Request (cần có Requirement trước)":"Change Request";
+  kOpt.disabled=none;kOpt.textContent=`${byId.impact.name} · ${byId.impact.task} (Change Request${none?", cần có Requirement trước":""})`;
+  if(none&&($("reqType").value==="cr"||$("reqStart").value==="impact")){$("reqType").value="new";if($("reqStart").value==="impact")$("reqStart").value="orch";updForm();}
+}
 function updForm(){
   const st=$("reqStart").value, type=$("reqType").value, scope=$("scopeCont").checked?"continue":"only";
   $("typeWrap").hidden=st!=="orch";
@@ -774,7 +783,11 @@ $("reqSteps").addEventListener("change",e=>{if(e.target.type==="checkbox")stepCh
 updForm();
 function fillSelects(){
   const keep=(el,html)=>{const v=el.value;el.innerHTML=html;if([...el.options].some(o=>o.value===v))el.value=v;};
-  keep($("reqParent"),dossiers.filter(d=>d.type==="new").map(d=>`<option value="${d.id}">${d.id} · ${esc(d.title)}</option>`).join("")||`<option value="">(chưa có hồ sơ yêu cầu mới)</option>`);
+  const reqs=dossiers.filter(d=>d.type==="new");
+  keep($("reqParent"),reqs.length
+    ?`<option value="">— Chọn Requirement —</option>`+[...reqs].reverse().map(d=>{const st=dState(d),ts=dTasks(d),l=ts[ts.length-1];return`<option value="${d.id}">${d.id} · ${esc(d.title)} · ${st==="done"?"đã chốt":"đang ở "+esc(byId[l.agent].name)}</option>`;}).join("")
+    :`<option value="">Chưa có Requirement nào</option>`);
+  crGuard();
   keep($("tDoss"),`<option value="adhoc">Việc lẻ mới (không thuộc hồ sơ)</option>`+[...dossiers].reverse().map(d=>`<option value="${d.id}">${d.id} · ${esc(d.title)}${dState(d)==="done"?" (đã chốt)":""}</option>`).join(""));
   syncAssign();
 }
@@ -896,6 +909,8 @@ $("f-req").addEventListener("submit",e=>{
   e.preventDefault();
   const title=$("reqTitle").value.trim(), body=$("reqBody").value.trim();
   if(!title||!body){$("reqMsg").textContent="Cần có tiêu đề và nội dung.";return;}
+  if((($("reqStart").value==="orch"&&$("reqType").value==="cr")||$("reqStart").value==="impact")&&!$("reqParent").value){
+    $("reqMsg").textContent="Change Request phải gắn với một Requirement. Chọn Requirement gốc.";$("reqParent").focus();return;}
   const st=$("reqStart").value, type=$("reqType").value, scope=$("scopeCont").checked?"continue":"only";
   const base={title,input:body,source:$("reqSource").value.trim(),files:attachments.slice()};
   const ticked=s=>!$("stepsWrap").hidden&&$("step-"+s)&&$("step-"+s).checked;

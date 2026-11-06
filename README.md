@@ -41,6 +41,8 @@ Tại mỗi cổng: **Duyệt** (sang bước sau) · **Yêu cầu sửa** (agen
 
 Mọi trường hợp đều dừng ở cổng duyệt sau mỗi bước.
 
+Change Request bắt buộc gắn với một Requirement đã có: khi chọn Change Request (hoặc giao cho Khoa), trang liệt kê các Requirement để chọn Requirement gốc. Chưa có Requirement nào thì chưa tạo được Change Request.
+
 **Giao thêm việc cho hồ sơ đang chạy** (trong khung của từng agent):
 
 | Hồ sơ đang ở đâu | Kết quả |
